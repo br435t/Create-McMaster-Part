@@ -22,8 +22,10 @@ prompting the user for a name and description via a BlockStyler dialog.
 | `create_part.py` | **Design** part. Prompts (BlockStyler dialog), then creates a `BE9_Design` item with an auto-assigned part number. |
 | `create_part_dialog.dlx` | BlockStyler dialog layout (Name + Description fields). Must sit next to `create_part.py`. |
 | `create_COTS_part.py` | **COTS/vendor** part (clean, reusable module mirroring `create_part.py`). Creates a `BE9_COTS` item with a user-supplied part number, and scrapes McMaster property data (log-only for now). |
-| `create_VENDOR_part.py` | The recorded-journal version of the COTS flow, with the 5 attribute values driven by a BlockStyler prompt. Reference/alternate to `create_COTS_part.py`. |
-| `create_VENDOR_part_dialog.dlx` | BlockStyler dialog for the COTS flow (5 fields: Part Number, Part Name, Description, Manufacturer, Part Class). Used by both `create_COTS_part.py` and `create_VENDOR_part.py`. Hand-authored; not yet round-tripped through Block UI Styler. |
+| `create_VENDOR_part.py` | Recorded-journal COTS flow driven by the **McMaster scraper**: prompt for a part number → scrape JSON + download CAD → derive attributes → prompt for part name → create the part. |
+| `create_VENDOR_part_dialog.dlx` | 5-field COTS dialog (Part Number, Part Name, Description, Manufacturer, Part Class). Used by `create_COTS_part.py`. Hand-authored; not yet round-tripped through Block UI Styler. |
+| `create_VENDOR_partno_dialog.dlx` | Single-field "Part Number" dialog (block id `partNo`) — step 1 of `create_VENDOR_part.py`. |
+| `create_VENDOR_partname_dialog.dlx` | Single-field "Part Name" dialog (block id `partName`) — step 4 of `create_VENDOR_part.py`, pre-filled with the scraped title. |
 | `scraper/` | Vendored copy of the McMaster-Carr scraper (`br435t/McMaster-scraper`). See `scraper/VENDORED.md`. Run as a subprocess, not imported into NX. |
 | `nx_input.py` | Reusable UF `ask_string` text-prompt helper (legacy; no longer used but kept for reuse). |
 | `new_part.py` | The original recorded journal (File → New → Item) this work was reverse-engineered from. Reference only. **Generated from inside NX** via **Tools → Journal → Record**, not hand-written. |
@@ -42,6 +44,28 @@ Creates a `BE9_COTS` item. Differs from the Design flow in three ways:
 Key functions: `create_part_cots(...)` (non-interactive creator),
 `prompt_cots_attributes(...)` (BlockStyler dialog → dict of the 5 fields),
 `scrape_mcmaster_part(...)` / `log_scraped_data(...)` (see below), and `main()`.
+
+### `create_VENDOR_part.py` — scraper-driven COTS flow
+
+This is the recorded journal wired to the scraper. `main()` does:
+
+1. **Prompt for a part number** (`create_VENDOR_partno_dialog.dlx`).
+2. **`fetch_mcmaster(pn)`** — subprocess to the external scraper: `scrape --out
+   C:\TEMP\MCMASTER` (writes `<pn>.json`) then `cad --out C:\TEMP\MCMASTER
+   --json` (downloads the default 3-D Parasolid, **no-threads** `*.X_T`).
+3. **Derive attributes:** `part_no` = scraped `part_number`;
+   `part_desc` = `build_description()` = `title_primary` + `title_secondary`,
+   concatenated and **UPPERCASED**; `manufacturer` = `"MCMASTER"` (hardcoded);
+   `part_class` = `"Class III"` (hardcoded).
+4. **Prompt for the part name** (`create_VENDOR_partname_dialog.dlx`), pre-filled
+   with the scraped title (editable).
+5. Run the recorded File → New → Item body to create the `BE9_COTS` part.
+
+Notes: a hard scrape failure aborts (the description depends on it); a CAD
+download failure is logged but non-fatal. Output dir is `C:\TEMP\MCMASTER`
+(constant `MCMASTER_OUT`). Auto-login is left enabled, so an expired session
+pops a sign-in window. The scraper side (`fetch_mcmaster`/`build_description`)
+is live-tested; the dialogs + journal body still need a real NX run.
 
 ### McMaster scraper integration
 

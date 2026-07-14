@@ -1,45 +1,52 @@
 ﻿# NX 2506
 # Journal created by br435t on Tue Jul 14 09:12:10 2026 Pacific Daylight Time
 #
+import json
 import os
+import subprocess
 import sys
 import math
 import NXOpen
 import NXOpen.PDM
 import NXOpen.BlockStyler
 
-# BlockStyler dialog layout lives next to this module.
-_DIALOG_DLX = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "create_VENDOR_part_dialog.dlx")
+_HERE = os.path.dirname(os.path.abspath(__file__))
+
+# Single-field BlockStyler dialogs (generated to match create_part_dialog.dlx).
+_PARTNO_DLX = os.path.join(_HERE, "create_VENDOR_partno_dialog.dlx")
+_PARTNAME_DLX = os.path.join(_HERE, "create_VENDOR_partname_dialog.dlx")
+
+# Vendored McMaster scraper + where its output lands.
+_SCRAPER_SCRIPT = os.path.join(_HERE, "scraper", "mcmaster_scraper.py")
+MCMASTER_OUT = r"C:\TEMP\MCMASTER"
 
 
-def prompt_vendor_attributes(dlx_path=_DIALOG_DLX):
-    """Show the Create Vendor Part BlockStyler dialog and read its fields.
+def prompt_string(dlx_path, block_id, default=None):
+    """Show a single-field string BlockStyler dialog and return its value.
 
-    Returns a dict with keys part_no, part_name, part_desc, manufacturer,
-    part_class (all stripped strings), or None if the user cancels.
+    Returns the stripped field value, or None if the user cancels. If `default`
+    is given it is pre-filled into the field (editable by the user).
 
     BlockStyler dialogs require callback handlers to be registered (NX errors
-    with "The Initialize callback is not registered" otherwise). We register
-    the mandatory ones and capture the field values in the OK/Apply callback,
-    which is the reliable place to read block values.
+    with "The Initialize callback is not registered" otherwise), and block
+    values must be read inside the OK/Apply callback.
     """
     the_ui = NXOpen.UI.GetUI()
     dialog = the_ui.CreateDialog(dlx_path)
     captured = {}
 
     def initialize_cb():
-        pass
+        if default:
+            try:
+                dialog.GetBlockProperties(block_id).SetString("Value", default)
+            except Exception:
+                pass  # pre-fill is best-effort; never block the dialog
 
     def update_cb(block):
         return 0
 
     def apply_cb():
-        captured["part_no"] = dialog.GetBlockProperties("partNo").GetString("Value")
-        captured["part_name"] = dialog.GetBlockProperties("partName").GetString("Value")
-        captured["part_desc"] = dialog.GetBlockProperties("partDesc").GetString("Value")
-        captured["manufacturer"] = dialog.GetBlockProperties("manufacturer").GetString("Value")
-        captured["part_class"] = dialog.GetBlockProperties("partClass").GetString("Value")
+        captured["value"] = dialog.GetBlockProperties(block_id).GetString("Value")
         return 0
 
     def ok_cb():
@@ -54,10 +61,95 @@ def prompt_vendor_attributes(dlx_path=_DIALOG_DLX):
         response = dialog.Show()
         if response != NXOpen.Selection.Response.Ok:
             return None
-        return {key: (captured.get(key) or "").strip() for key in (
-            "part_no", "part_name", "part_desc", "manufacturer", "part_class")}
+        return (captured.get("value") or "").strip()
     finally:
         dialog.Dispose()
+
+
+def _scraper_python():
+    """External Python that has selenium installed (see scraper/VENDORED.md)."""
+    return os.environ.get("MCMASTER_SCRAPER_PYTHON", "python")
+
+
+def _run_scraper(sub_args, timeout=300):
+    cmd = [_scraper_python(), _SCRAPER_SCRIPT] + sub_args
+    return subprocess.run(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        universal_newlines=True, timeout=timeout)
+
+
+def fetch_mcmaster(part_no, out_dir=MCMASTER_OUT):
+    """Scrape property data (JSON) and download the no-threads Parasolid CAD.
+
+    Runs the vendored scraper in an external interpreter as a subprocess:
+      1. `scrape <pn> --out <dir>`  -> writes <dir>/<pn>.json
+      2. `cad <pn> --out <dir> --json` -> downloads the default 3-D Parasolid,
+         no-threads *.X_T into <dir>
+
+    Returns a dict:
+      {"data": <scraped dict or None>, "json_file": path or None,
+       "cad_file": path or None, "error": <hard error or None>,
+       "cad_error": <soft CAD error or None>}
+    A hard `error` means the JSON (and thus the description) is unavailable;
+    `cad_error` is non-fatal. Never raises.
+    """
+    result = {"data": None, "json_file": None, "cad_file": None,
+              "error": None, "cad_error": None}  # type: dict
+    try:
+        os.makedirs(out_dir, exist_ok=True)
+    except OSError as ex:
+        result["error"] = "cannot create {0}: {1}".format(out_dir, ex)
+        return result
+
+    # 1. Scrape structured data to <out_dir>/<part_no>.json
+    try:
+        proc = _run_scraper(["scrape", part_no, "--out", out_dir])
+    except (OSError, subprocess.SubprocessError) as ex:
+        result["error"] = "failed to run scraper: {0}".format(ex)
+        return result
+    if proc.returncode != 0:
+        result["error"] = "scrape exited {0}: {1}".format(
+            proc.returncode, (proc.stderr or "").strip())
+        return result
+
+    json_file = os.path.join(out_dir, part_no + ".json")
+    if not os.path.exists(json_file):
+        result["error"] = "scrape produced no JSON at {0}".format(json_file)
+        return result
+    try:
+        with open(json_file, encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (OSError, ValueError) as ex:
+        result["error"] = "cannot read scraped JSON: {0}".format(ex)
+        return result
+    result["json_file"] = json_file
+    result["data"] = data
+    if data.get("error"):
+        result["error"] = "scrape error: {0}".format(data["error"])
+        return result
+
+    # 2. Download the CAD (default = 3-D Parasolid, no threads, *.X_T)
+    try:
+        cad_proc = _run_scraper(["cad", part_no, "--out", out_dir, "--json"])
+    except (OSError, subprocess.SubprocessError) as ex:
+        result["cad_error"] = "failed to run CAD download: {0}".format(ex)
+        return result
+    if cad_proc.returncode == 0:
+        try:
+            result["cad_file"] = json.loads(cad_proc.stdout).get("file")
+        except ValueError:
+            result["cad_error"] = "could not parse CAD output"
+    else:
+        result["cad_error"] = "CAD download exited {0}: {1}".format(
+            cad_proc.returncode, (cad_proc.stderr or "").strip())
+    return result
+
+
+def build_description(data):
+    """part_desc = title_primary + title_secondary, concatenated and UPPERCASED."""
+    primary = (data.get("title_primary") or "").strip()
+    secondary = (data.get("title_secondary") or "").strip()
+    return " ".join(p for p in (primary, secondary) if p).upper()
 
 
 def main(args) :
@@ -65,16 +157,51 @@ def main(args) :
     theSession  = NXOpen.Session.GetSession() #type: NXOpen.Session
     workPart = theSession.Parts.Work
     displayPart = theSession.Parts.Display
+    lw = theSession.ListingWindow
+    lw.Open()
 
-    # --- Collect the vendor attribute values from the user (BlockStyler) ---
-    vendor = prompt_vendor_attributes()
-    if vendor is None:
-        return  # user cancelled
-    part_no = vendor["part_no"]
-    part_name = vendor["part_name"]
-    part_desc = vendor["part_desc"]
-    manufacturer = vendor["manufacturer"]
-    part_class = vendor["part_class"]
+    # --- 1. Ask for the McMaster part number ---
+    entered_pn = prompt_string(_PARTNO_DLX, "partNo")
+    if entered_pn is None:
+        lw.WriteLine("Cancelled: part number dialog dismissed.")
+        return
+    if not entered_pn:
+        lw.WriteLine("Cancelled: no part number entered.")
+        return
+
+    # --- 2. Scrape JSON + download the no-threads Parasolid CAD ---
+    lw.WriteLine("Fetching McMaster data for {0} -> {1} ...".format(
+        entered_pn, MCMASTER_OUT))
+    fetched = fetch_mcmaster(entered_pn)
+    if fetched["error"]:
+        lw.WriteLine("Aborted: {0}".format(fetched["error"]))
+        return
+    data = fetched["data"]
+    if fetched.get("json_file"):
+        lw.WriteLine("  JSON: {0}".format(fetched["json_file"]))
+    if fetched.get("cad_file"):
+        lw.WriteLine("  CAD : {0}".format(fetched["cad_file"]))
+    elif fetched.get("cad_error"):
+        lw.WriteLine("  CAD download warning: {0}".format(fetched["cad_error"]))
+
+    # --- 3. Derive attribute values ---
+    part_no = (data.get("part_number") or entered_pn).strip()
+    part_desc = build_description(data)          # title_primary + secondary, UPPER
+    manufacturer = "MCMASTER"                    # hardcoded
+    part_class = "Class III"                     # hardcoded
+    lw.WriteLine("  Description: {0}".format(part_desc))
+
+    # --- 4. Ask for the part name (pre-filled with the scraped title) ---
+    part_name = prompt_string(_PARTNAME_DLX, "partName",
+                              default=data.get("title_primary") or "")
+    if part_name is None:
+        lw.WriteLine("Cancelled: part name dialog dismissed.")
+        return
+    if not part_name:
+        lw.WriteLine("Cancelled: no part name entered.")
+        return
+
+    lw.WriteLine("Creating COTS part {0} ...".format(part_no))
     # ----------------------------------------------
     #   Menu: File->New->Item...
     # ----------------------------------------------
