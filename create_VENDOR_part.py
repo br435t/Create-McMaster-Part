@@ -219,9 +219,8 @@ def main(args) :
     part_class = "Class III"                     # hardcoded
     lw.WriteLine("  Description: {0}".format(part_desc))
 
-    # --- 4. Ask for the part name (pre-filled with the scraped title) ---
-    part_name = prompt_string(_PARTNAME_DLX, "partName",
-                              default=data.get("title_primary") or "")
+    # --- 4. Ask for the part name (pre-filled with the description, all caps) ---
+    part_name = prompt_string(_PARTNAME_DLX, "partName", default=part_desc)
     if part_name is None:
         lw.WriteLine("Cancelled: part name dialog dismissed.")
         return
