@@ -105,7 +105,7 @@ def _run_scraper(sub_args, timeout=300):
         universal_newlines=True, timeout=timeout)
 
 
-def fetch_mcmaster(part_no, out_dir=MCMASTER_OUT):
+def fetch_mcmaster(part_no, out_dir=MCMASTER_OUT, log=None):
     """Scrape property data (JSON) and download the no-threads Parasolid CAD.
 
     Runs the vendored scraper in an external interpreter as a subprocess:
@@ -122,6 +122,8 @@ def fetch_mcmaster(part_no, out_dir=MCMASTER_OUT):
     """
     result = {"data": None, "json_file": None, "cad_file": None,
               "error": None, "cad_error": None}  # type: dict
+    _log = log or (lambda m: None)
+    _log("  running scraper/mcmaster_scraper.py ({0})".format(_scraper_python()))
     try:
         os.makedirs(out_dir, exist_ok=True)
     except OSError as ex:
@@ -129,6 +131,8 @@ def fetch_mcmaster(part_no, out_dir=MCMASTER_OUT):
         return result
 
     # 1. Scrape structured data to <out_dir>/<part_no>.json
+    _log("  > scrape {0} --out {1}  (opens Edge; may take a moment)".format(
+        part_no, out_dir))
     try:
         proc = _run_scraper(["scrape", part_no, "--out", out_dir])
     except (OSError, subprocess.SubprocessError) as ex:
@@ -156,6 +160,8 @@ def fetch_mcmaster(part_no, out_dir=MCMASTER_OUT):
         return result
 
     # 2. Download the CAD (default = 3-D Parasolid, no threads, *.X_T)
+    _log("  > cad {0} --out {1}  (downloading no-threads Parasolid)".format(
+        part_no, out_dir))
     try:
         cad_proc = _run_scraper(["cad", part_no, "--out", out_dir, "--json"])
     except (OSError, subprocess.SubprocessError) as ex:
@@ -218,6 +224,9 @@ def main(args) :
     displayPart = theSession.Parts.Display
     lw = theSession.ListingWindow
     lw.Open()
+    lw.WriteLine("=" * 60)
+    lw.WriteLine("Running create_VENDOR_part.py (McMaster -> Teamcenter COTS part)")
+    lw.WriteLine("=" * 60)
 
     # --- 1. Ask for the McMaster part number ---
     entered_pn = prompt_string(_PARTNO_DLX, "partNo")
@@ -231,7 +240,7 @@ def main(args) :
     # --- 2. Scrape JSON + download the no-threads Parasolid CAD ---
     lw.WriteLine("Fetching McMaster data for {0} -> {1} ...".format(
         entered_pn, MCMASTER_OUT))
-    fetched = fetch_mcmaster(entered_pn)
+    fetched = fetch_mcmaster(entered_pn, log=lw.WriteLine)
     if fetched["error"]:
         lw.WriteLine("Aborted: {0}".format(fetched["error"]))
         return
@@ -347,13 +356,15 @@ def main(args) :
     # --- 6. Import the downloaded Parasolid geometry into the new part ---
     cad_file = fetched.get("cad_file")
     if cad_file and os.path.exists(cad_file):
-        lw.WriteLine("Importing Parasolid: {0}".format(cad_file))
+        lw.WriteLine("Running Parasolid import (import_parasolid)")
+        lw.WriteLine("  > {0}".format(cad_file))
         import_parasolid(theSession, cad_file)
-        lw.WriteLine("Imported geometry into {0}.".format(workPart.Leaf))
+        lw.WriteLine("  imported geometry into {0}.".format(workPart.Leaf))
     else:
         lw.WriteLine("No CAD file available; skipped Parasolid import.")
 
     theSession.CleanUpFacetedFacesAndEdges()
+    lw.WriteLine("Done (create_VENDOR_part.py).")
 
 
 if __name__ == '__main__':
