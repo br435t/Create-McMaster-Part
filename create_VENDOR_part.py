@@ -51,7 +51,9 @@ def prompt_string(dlx_path, block_id, default=None):
     def apply_cb():
         props = dialog.GetBlockProperties(block_id)
         value = ""
-        for key in ("Value", "WideValue"):
+        # Read WideValue first: for a Wide-presentation field that is the live
+        # edited text, while "Value" may still hold the initialize prefill.
+        for key in ("WideValue", "Value"):
             try:
                 candidate = props.GetString(key)
             except Exception:
