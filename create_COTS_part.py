@@ -43,6 +43,24 @@ _SCRAPER_SCRIPT = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "scraper", "mcmaster_scraper.py")
 
 
+def _scraper_python():
+    """External Python that has selenium installed (see scraper/VENDORED.md).
+
+    Preference order (so it works even when NX didn't inherit the env var):
+      1. MCMASTER_SCRAPER_PYTHON environment variable
+      2. the repo-local venv next to this script (.venv\\Scripts\\python.exe)
+      3. "python" on PATH
+    """
+    env = os.environ.get("MCMASTER_SCRAPER_PYTHON")
+    if env:
+        return env
+    venv_py = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), ".venv", "Scripts", "python.exe")
+    if os.path.exists(venv_py):
+        return venv_py
+    return "python"
+
+
 def scrape_mcmaster_part(part_no, python_exe=None, timeout=300, extra_args=None):
     """Scrape McMaster-Carr property data for a part number.
 
@@ -64,7 +82,7 @@ def scrape_mcmaster_part(part_no, python_exe=None, timeout=300, extra_args=None)
         an "error" key rather than raising, so the caller can log and continue.
     """
     if python_exe is None:
-        python_exe = os.environ.get("MCMASTER_SCRAPER_PYTHON", "python")
+        python_exe = _scraper_python()
 
     cmd = [python_exe, _SCRAPER_SCRIPT, "scrape", part_no, "--stdout"]
     if extra_args:

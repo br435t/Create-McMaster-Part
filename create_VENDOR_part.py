@@ -67,8 +67,20 @@ def prompt_string(dlx_path, block_id, default=None):
 
 
 def _scraper_python():
-    """External Python that has selenium installed (see scraper/VENDORED.md)."""
-    return os.environ.get("MCMASTER_SCRAPER_PYTHON", "python")
+    """External Python that has selenium installed (see scraper/VENDORED.md).
+
+    Preference order (so it works even when NX didn't inherit the env var):
+      1. MCMASTER_SCRAPER_PYTHON environment variable
+      2. the repo-local venv next to this script (.venv\\Scripts\\python.exe)
+      3. "python" on PATH
+    """
+    env = os.environ.get("MCMASTER_SCRAPER_PYTHON")
+    if env:
+        return env
+    venv_py = os.path.join(_HERE, ".venv", "Scripts", "python.exe")
+    if os.path.exists(venv_py):
+        return venv_py
+    return "python"
 
 
 def _run_scraper(sub_args, timeout=300):
