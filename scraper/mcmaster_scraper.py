@@ -347,14 +347,28 @@ def get_cad_options(driver):
     driver.execute_script(
         "document.querySelector('[class*=\"_buttonDropdown_\"]').click();"
     )
-    # The listbox renders async after the click; poll for its options.
+    # The listbox renders async AND populates incrementally. Poll until the
+    # option list is non-empty and STABLE (same count across consecutive reads)
+    # before returning. Returning on the first non-empty read can hand back a
+    # partially rendered list that is missing the "no threads" variants, which
+    # makes choose_option fall back to the plain (threaded) file -> wrong CAD.
     deadline = time.time() + 15
+    last_options = []
+    last_count = -1
+    stable_reads = 0
     while time.time() < deadline:
         options = driver.execute_script(READ_OPTIONS_JS)
         if options:
-            return options
+            last_options = options
+            if len(options) == last_count:
+                stable_reads += 1
+                if stable_reads >= 2:  # unchanged for ~2 polls (~0.8s)
+                    return options
+            else:
+                last_count = len(options)
+                stable_reads = 0
         time.sleep(0.4)
-    return []
+    return last_options
 
 
 def choose_option(options, fmt, want_threads):

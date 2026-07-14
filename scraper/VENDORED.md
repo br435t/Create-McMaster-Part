@@ -24,5 +24,11 @@ interpreter.
   advertise the genuine current Edge (falls back to Edge's default UA if
   detection fails). Worth upstreaming to the source repo.
 
+- **`get_cad_options()` stability wait** (2026-07-14): upstream returns on the
+  first non-empty read of the CAD dropdown, which can be a partially rendered
+  list missing the "no threads" variants — causing `choose_option` to fall back
+  to the plain (threaded) file (wrong CAD). Now polls until the option count is
+  stable across consecutive reads before returning. Worth upstreaming.
+
 To update this copy, re-pull from the source repo, re-apply the local
 modifications above, and refresh the commit hash.
