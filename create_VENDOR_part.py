@@ -5,7 +5,6 @@ import json
 import os
 import subprocess
 import sys
-import math
 import NXOpen
 import NXOpen.PDM
 import NXOpen.BlockStyler
@@ -214,193 +213,84 @@ def main(args) :
         return
 
     lw.WriteLine("Creating COTS part {0} ...".format(part_no))
-    # ----------------------------------------------
-    #   Menu: File->New->Item...
-    # ----------------------------------------------
-    markId1 = theSession.SetUndoMark(NXOpen.Session.MarkVisibility.Visible, "Start")
-    
-    fileNew1 = theSession.Parts.FileNew()
-    
-    fileNew1.TemplateFileName = "@DB/model-plain-1-inch-template/A"
-    
-    fileNew1.UseBlankTemplate = False
-    
-    fileNew1.ApplicationName = "ModelTemplate"
-    
-    fileNew1.Units = NXOpen.Part.Units.Inches
-    
-    fileNew1.RelationType = "master"
-    
-    fileNew1.UsesMasterModel = "No"
-    
-    fileNew1.TemplateType = NXOpen.FileNewTemplateType.Item
-    
-    fileNew1.TemplatePresentationName = "Model"
-    
-    fileNew1.ItemType = "BE9_Design,BE9_Electrical,BE9_COTS,BE9_Tooling"
-    
-    fileNew1.Specialization = ""
-    
-    fileNew1.SetCanCreateAltrep(False)
-    
-    partOperationCreateBuilder1 = theSession.PdmSession.CreateCreateOperationBuilder(NXOpen.PDM.PartOperationBuilder.OperationType.Create)
-    
-    fileNew1.SetPartOperationCreateBuilder(partOperationCreateBuilder1)
-    
-    partOperationCreateBuilder1.SetOperationSubType(NXOpen.PDM.PartOperationCreateBuilder.OperationSubType.FromTemplate)
-    
-    partOperationCreateBuilder1.SetModelType("master")
-    
-    partOperationCreateBuilder1.SetItemType("BE9_Design")
-    
-    logicalobjects1 = partOperationCreateBuilder1.CreateLogicalObjects()
-    
-    sourceobjects1 = logicalobjects1[0].GetUserAttributeSourceObjects()
-    
-    partOperationCreateBuilder1.DefaultDestinationFolder = "br435t"
-    
-    sourceobjects2 = logicalobjects1[0].GetUserAttributeSourceObjects()
-    
-    partOperationCreateBuilder1.SetOperationSubType(NXOpen.PDM.PartOperationCreateBuilder.OperationSubType.FromTemplate)
-    
-    sourceobjects3 = logicalobjects1[0].GetUserAttributeSourceObjects()
-    
-    theSession.SetUndoMarkName(markId1, "New Dialog")
-    
-    partOperationCreateBuilder1.SetItemType("BE9_COTS")
-    
-    logicalobjects2 = partOperationCreateBuilder1.CreateLogicalObjects()
-    
-    sourceobjects4 = logicalobjects2[0].GetUserAttributeSourceObjects()
-    
-    attributetitles1 = []
-    titlepatterns1 = []
-    nXObject1 = partOperationCreateBuilder1.CreateAttributeTitleToNamingPatternMap(attributetitles1, titlepatterns1)
-    
-    objects1 = [NXOpen.NXObject.Null] * 1 
-    objects1[0] = logicalobjects2[0]
-    properties1 = [NXOpen.NXObject.Null] * 1 
-    properties1[0] = nXObject1
-    errorList1 = partOperationCreateBuilder1.AutoAssignAttributesWithNamingPattern(objects1, properties1)
-    
-    errorList1.Dispose()
-    errorMessageHandler1 = partOperationCreateBuilder1.GetErrorMessageHandler(True)
-    
-    objects2 = []
-    attributePropertiesBuilder1 = theSession.AttributeManager.CreateAttributePropertiesBuilder(NXOpen.BasePart.Null, objects2, NXOpen.AttributePropertiesBuilder.OperationType.Create)
-    
-    objects3 = []
-    attributePropertiesBuilder1.SetAttributeObjects(objects3)
-    
-    objects4 = [NXOpen.NXObject.Null] * 1 
-    objects4[0] = sourceobjects4[0]
-    attributePropertiesBuilder1.SetAttributeObjects(objects4)
-    
-    attributePropertiesBuilder1.Title = "DB_PART_NO"
-    
-    attributePropertiesBuilder1.Category = "BE9_COTS"
-    
-    attributePropertiesBuilder1.StringValue = part_no
-    
-    attributePropertiesBuilder1.Category = "BE9_COTS"
-    
-    changed1 = attributePropertiesBuilder1.CreateAttribute()
-    
-    attributePropertiesBuilder1.Title = "DB_PART_NAME"
-    
-    attributePropertiesBuilder1.StringValue = part_name
-    
-    attributePropertiesBuilder1.Category = "BE9_COTS"
-    
-    changed2 = attributePropertiesBuilder1.CreateAttribute()
-    
-    attributePropertiesBuilder1.Title = "DB_PART_DESC"
-    
-    attributePropertiesBuilder1.StringValue = part_desc
-    
-    attributePropertiesBuilder1.Category = "BE9_COTS"
-    
-    changed3 = attributePropertiesBuilder1.CreateAttribute()
-    
-    attributePropertiesBuilder1.Title = "HE_Manufacturer"
-    
-    attributePropertiesBuilder1.Category = "BE9_COTSRevision"
-    
-    attributePropertiesBuilder1.StringValue = manufacturer
-    
-    attributePropertiesBuilder1.Category = "BE9_COTSRevision"
-    
-    changed4 = attributePropertiesBuilder1.CreateAttribute()
-    
-    attributePropertiesBuilder1.Title = "Part Class"
-    
-    attributePropertiesBuilder1.StringValue = part_class
-    
-    attributePropertiesBuilder1.Category = "BE9_COTSRevision"
-    
-    changed5 = attributePropertiesBuilder1.CreateAttribute()
-    
-    markId2 = theSession.SetUndoMark(NXOpen.Session.MarkVisibility.Invisible, "New")
-    
-    theSession.DeleteUndoMark(markId2, None)
-    
-    markId3 = theSession.SetUndoMark(NXOpen.Session.MarkVisibility.Invisible, "New")
-    
-    fileNew1.TemplateFileName = "@DB/model-plain-1-inch-template/A"
-    
-    fileNew1.UseBlankTemplate = False
-    
-    fileNew1.ApplicationName = "ModelTemplate"
-    
-    fileNew1.Units = NXOpen.Part.Units.Inches
-    
-    fileNew1.RelationType = "master"
-    
-    fileNew1.UsesMasterModel = "No"
-    
-    fileNew1.TemplateType = NXOpen.FileNewTemplateType.Item
-    
-    fileNew1.TemplatePresentationName = "Model"
-    
-    fileNew1.ItemType = "BE9_Design,BE9_Electrical,BE9_COTS,BE9_Tooling"
-    
-    fileNew1.Specialization = ""
-    
-    fileNew1.SetCanCreateAltrep(False)
-    
-    fileNew1.MasterFileName = ""
-    
-    fileNew1.MakeDisplayedPart = True
-    
-    fileNew1.DisplayPartOption = NXOpen.DisplayPartOption.AllowAdditional
-    
-    partOperationCreateBuilder1.ValidateLogicalObjectsToCommit()
-    
-    logicalobjects3 = [NXOpen.PDM.LogicalObject.Null] * 1 
-    logicalobjects3[0] = logicalobjects2[0]
-    partOperationCreateBuilder1.CreateSpecificationsForLogicalObjects(logicalobjects3)
-    
-    errorMessageHandler2 = partOperationCreateBuilder1.GetErrorMessageHandler(True)
-    
-    errorMessageHandler3 = partOperationCreateBuilder1.GetErrorMessageHandler(True)
-    
-    nXObject2 = fileNew1.Commit()
-    
-    workPart = theSession.Parts.Work # vendor_PN.A/vendor_Name
-    displayPart = theSession.Parts.Display # vendor_PN.A/vendor_Name
-    errorMessageHandler4 = partOperationCreateBuilder1.GetErrorMessageHandler(True)
-    
-    theSession.DeleteUndoMark(markId3, None)
-    
-    fileNew1.Destroy()
-    
-    attributePropertiesBuilder1.Destroy()
-    
+    # --- 5. Create the BE9_COTS item (File > New > Item) ---
+    fileNew = theSession.Parts.FileNew()
+    fileNew.TemplateFileName = "@DB/model-plain-1-inch-template/A"
+    fileNew.UseBlankTemplate = False
+    fileNew.ApplicationName = "ModelTemplate"
+    fileNew.Units = NXOpen.Part.Units.Inches
+    fileNew.RelationType = "master"
+    fileNew.UsesMasterModel = "No"                 # NOTE: string, not bool
+    fileNew.TemplateType = NXOpen.FileNewTemplateType.Item
+    fileNew.TemplatePresentationName = "Model"
+    fileNew.ItemType = "BE9_Design,BE9_Electrical,BE9_COTS,BE9_Tooling"
+    fileNew.Specialization = ""
+    fileNew.SetCanCreateAltrep(False)
+
+    opBuilder = theSession.PdmSession.CreateCreateOperationBuilder(
+        NXOpen.PDM.PartOperationBuilder.OperationType.Create)
+    fileNew.SetPartOperationCreateBuilder(opBuilder)
+    opBuilder.SetOperationSubType(
+        NXOpen.PDM.PartOperationCreateBuilder.OperationSubType.FromTemplate)
+    opBuilder.SetModelType("master")
+    opBuilder.SetItemType("BE9_COTS")
+    opBuilder.DefaultDestinationFolder = "br435t"
+
+    logicalObjects = opBuilder.CreateLogicalObjects()
+    sourceObjects = logicalObjects[0].GetUserAttributeSourceObjects()
+
+    # COTS parts are not auto-numbered; register an empty naming map so the
+    # part number comes from the DB_PART_NO attribute set below.
+    namingMap = opBuilder.CreateAttributeTitleToNamingPatternMap([], [])
+    errorList = opBuilder.AutoAssignAttributesWithNamingPattern(
+        [logicalObjects[0]], [namingMap])
+    errorList.Dispose()
+
+    attrBuilder = theSession.AttributeManager.CreateAttributePropertiesBuilder(
+        NXOpen.BasePart.Null, [],
+        NXOpen.AttributePropertiesBuilder.OperationType.Create)
+    attrBuilder.SetAttributeObjects([sourceObjects[0]])
+
+    # Item-level attributes (category BE9_COTS).
+    attrBuilder.Category = "BE9_COTS"
+    attrBuilder.Title = "DB_PART_NO"
+    attrBuilder.StringValue = part_no
+    attrBuilder.CreateAttribute()
+
+    attrBuilder.Title = "DB_PART_NAME"
+    attrBuilder.StringValue = part_name
+    attrBuilder.CreateAttribute()
+
+    attrBuilder.Title = "DB_PART_DESC"
+    attrBuilder.StringValue = part_desc
+    attrBuilder.CreateAttribute()
+
+    # Revision-level attributes (category BE9_COTSRevision).
+    attrBuilder.Category = "BE9_COTSRevision"
+    attrBuilder.Title = "HE_Manufacturer"
+    attrBuilder.StringValue = manufacturer
+    attrBuilder.CreateAttribute()
+
+    attrBuilder.Title = "Part Class"
+    attrBuilder.StringValue = part_class
+    attrBuilder.CreateAttribute()
+
+    # Finalize and commit.
+    fileNew.MasterFileName = ""
+    fileNew.MakeDisplayedPart = True
+    fileNew.DisplayPartOption = NXOpen.DisplayPartOption.AllowAdditional
+    opBuilder.ValidateLogicalObjectsToCommit()
+    opBuilder.CreateSpecificationsForLogicalObjects([logicalObjects[0]])
+    fileNew.Commit()
+
+    workPart = theSession.Parts.Work
+    displayPart = theSession.Parts.Display
+    lw.WriteLine("Created COTS part: {0}".format(workPart.Leaf))
+
+    fileNew.Destroy()
+    attrBuilder.Destroy()
     theSession.CleanUpFacetedFacesAndEdges()
-    
-    # ----------------------------------------------
-    #   Menu: Tools->Automation->Journal->Stop Recording
-    # ----------------------------------------------
-    
+
+
 if __name__ == '__main__':
     main(sys.argv[1:])
