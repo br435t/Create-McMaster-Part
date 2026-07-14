@@ -50,6 +50,55 @@ DEFAULT_PROFILE = os.path.join(
 )
 
 
+def _edge_version():
+    """Best-effort installed Edge version, e.g. "150.0.4078.65", or None.
+
+    Tries the registry (BLBeacon), then the Edge install folder.
+    """
+    try:
+        import winreg
+        for hive in (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE):
+            try:
+                with winreg.OpenKey(
+                        hive, r"Software\Microsoft\Edge\BLBeacon") as key:
+                    version, _ = winreg.QueryValueEx(key, "version")
+                    if version:
+                        return version
+            except OSError:
+                continue
+    except ImportError:
+        pass
+    for base in (os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"),
+                 os.environ.get("ProgramFiles", r"C:\Program Files")):
+        app = os.path.join(base, "Microsoft", "Edge", "Application")
+        try:
+            versions = [d for d in os.listdir(app)
+                        if d[:1].isdigit() and "." in d]
+        except OSError:
+            continue
+        if versions:
+            return sorted(versions, key=lambda v: [int(p) for p in v.split(".")
+                          if p.isdigit()])[-1]
+    return None
+
+
+def edge_user_agent():
+    """Genuine current Microsoft Edge desktop UA, or None if undetectable.
+
+    Corporate browser-control policies block unapproved/outdated browsers by
+    inspecting the UA, so we advertise the REAL installed Edge rather than a
+    spoofed (and quickly stale) Chrome string. If the version can't be found we
+    return None and the caller leaves Edge's own default UA in place.
+    """
+    version = _edge_version()
+    if not version:
+        return None
+    major = version.split(".", 1)[0]
+    return ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/{0}.0.0.0 Safari/537.36 Edg/{0}.0.0.0".format(major))
+
+
 def make_driver(headful=False, profile_dir=DEFAULT_PROFILE):
     opts = Options()
     if not headful:
@@ -60,10 +109,12 @@ def make_driver(headful=False, profile_dir=DEFAULT_PROFILE):
     opts.add_argument("--window-size=1280,2200")
     opts.add_argument("--disable-gpu")
     opts.add_argument("--log-level=3")
-    opts.add_argument(
-        "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
-    )
+    # Advertise the real, current Edge (not a spoofed Chrome UA) so corporate
+    # browser-control policies don't block us. Falls back to Edge's own default
+    # UA if the version can't be detected.
+    user_agent = edge_user_agent()
+    if user_agent:
+        opts.add_argument("user-agent=" + user_agent)
     driver = webdriver.Edge(options=opts)
     driver.set_page_load_timeout(60)
     return driver

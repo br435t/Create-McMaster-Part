@@ -15,4 +15,14 @@ external Python interpreter that has Selenium installed (see
 `scrape_mcmaster_part()` in that module). It is not imported into NX's embedded
 interpreter.
 
-To update this copy, re-pull from the source repo and refresh the commit hash above.
+## Local modifications (diverged from upstream)
+
+- **`make_driver()` user-agent** (2026-07-14): upstream hard-codes a spoofed
+  `Chrome/126.0` UA, which trips corporate browser-control policies that block
+  unapproved/outdated browsers. Replaced with `edge_user_agent()` /
+  `_edge_version()`, which detect the installed Edge version at runtime and
+  advertise the genuine current Edge (falls back to Edge's default UA if
+  detection fails). Worth upstreaming to the source repo.
+
+To update this copy, re-pull from the source repo, re-apply the local
+modifications above, and refresh the commit hash.
