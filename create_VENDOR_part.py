@@ -163,6 +163,23 @@ def build_description(data):
     return " ".join(p for p in (primary, secondary) if p).upper()
 
 
+def import_parasolid(the_session, input_file, curves=True, surfaces=True, solids=True):
+    """Import a Parasolid (*.x_t) file into the current work part.
+
+    Mirrors the recorded File > Import > Parasolid flow (see import_Parasolid.py).
+    """
+    importer = the_session.DexManager.CreateParasolidImporter()
+    try:
+        importer.ObjectTypes.Curves = curves
+        importer.ObjectTypes.Surfaces = surfaces
+        importer.ObjectTypes.Solids = solids
+        importer.SetMode(NXOpen.BaseImporter.Mode.NativeFileSystem)
+        importer.InputFile = input_file
+        importer.Commit()
+    finally:
+        importer.Destroy()
+
+
 def main(args) :
 
     theSession  = NXOpen.Session.GetSession() #type: NXOpen.Session
@@ -289,6 +306,16 @@ def main(args) :
 
     fileNew.Destroy()
     attrBuilder.Destroy()
+
+    # --- 6. Import the downloaded Parasolid geometry into the new part ---
+    cad_file = fetched.get("cad_file")
+    if cad_file and os.path.exists(cad_file):
+        lw.WriteLine("Importing Parasolid: {0}".format(cad_file))
+        import_parasolid(theSession, cad_file)
+        lw.WriteLine("Imported geometry into {0}.".format(workPart.Leaf))
+    else:
+        lw.WriteLine("No CAD file available; skipped Parasolid import.")
+
     theSession.CleanUpFacetedFacesAndEdges()
 
 

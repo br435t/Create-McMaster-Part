@@ -29,6 +29,7 @@ prompting the user for a name and description via a BlockStyler dialog.
 | `scraper/` | Vendored copy of the McMaster-Carr scraper (`br435t/McMaster-scraper`). See `scraper/VENDORED.md`. Run as a subprocess, not imported into NX. |
 | `nx_input.py` | Reusable UF `ask_string` text-prompt helper (legacy; no longer used but kept for reuse). |
 | `new_part.py` | The original recorded journal (File → New → Item) this work was reverse-engineered from. Reference only. **Generated from inside NX** via **Tools → Journal → Record**, not hand-written. |
+| `import_Parasolid.py` | Recorded journal (File → Import → Parasolid) that the `import_parasolid()` helper in `create_VENDOR_part.py` was derived from. Reference only. |
 | `.mcp.json` | Config for the `nxopen` MCP server. |
 
 ## COTS / vendor parts (`create_COTS_part.py`)
@@ -60,9 +61,13 @@ This is the recorded journal wired to the scraper. `main()` does:
 4. **Prompt for the part name** (`create_VENDOR_partname_dialog.dlx`), pre-filled
    with the scraped title (editable).
 5. Run the recorded File → New → Item body to create the `BE9_COTS` part.
+6. **Import the downloaded Parasolid** (`import_parasolid()`) into the newly
+   created work part — using the actual `*.X_T` path from step 2, guarded so it
+   is skipped if the CAD download failed. Import happens after `Commit()`
+   because the part must exist first.
 
 Notes: a hard scrape failure aborts (the description depends on it); a CAD
-download failure is logged but non-fatal. Output dir is `C:\TEMP\MCMASTER`
+download failure is logged but non-fatal (and the Parasolid import is skipped). Output dir is `C:\TEMP\MCMASTER`
 (constant `MCMASTER_OUT`). Auto-login is left enabled, so an expired session
 pops a sign-in window. The scraper side (`fetch_mcmaster`/`build_description`)
 is live-tested; the dialogs + journal body still need a real NX run.
