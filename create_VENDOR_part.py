@@ -36,16 +36,30 @@ def prompt_string(dlx_path, block_id, default=None):
 
     def initialize_cb():
         if default:
-            try:
-                dialog.GetBlockProperties(block_id).SetString("Value", default)
-            except Exception:
-                pass  # pre-fill is best-effort; never block the dialog
+            props = dialog.GetBlockProperties(block_id)
+            # Set both storages: a KeyIn field reads "Value", a Wide field
+            # reads "WideValue". Best-effort — never block the dialog.
+            for key in ("Value", "WideValue"):
+                try:
+                    props.SetString(key, default)
+                except Exception:
+                    pass
 
     def update_cb(block):
         return 0
 
     def apply_cb():
-        captured["value"] = dialog.GetBlockProperties(block_id).GetString("Value")
+        props = dialog.GetBlockProperties(block_id)
+        value = ""
+        for key in ("Value", "WideValue"):
+            try:
+                candidate = props.GetString(key)
+            except Exception:
+                candidate = ""
+            if candidate:
+                value = candidate
+                break
+        captured["value"] = value
         return 0
 
     def ok_cb():
