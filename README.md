@@ -1,46 +1,72 @@
-# NX Open — Create Part
+# Create McMaster Part (NX Open)
 
-NX Open (Python) automation that creates a new part in **NX 2506** running in
-**Teamcenter managed mode**, prompting the user for a **Name** and **Description**
-through a BlockStyler dialog.
+NX Open (Python) automation for **NX 2506** in **Teamcenter managed mode**. Enter
+a McMaster-Carr part number and it scrapes the product data, downloads the CAD,
+creates a `BE9_COTS` part in Teamcenter, and imports the geometry — prompting
+through BlockStyler dialogs along the way.
 
-## Requirements
+There are two entry points:
 
-- Siemens **NX 2506** with an active **Teamcenter** session (managed mode).
-- Runs as a Python journal — no extra install.
+- **`create_VENDOR_part.py`** — the McMaster/COTS flow (part number → scrape →
+  create → import). This is the main tool.
+- **`create_part.py`** — the original Design-part flow (prompt for Name +
+  Description, auto-assigned number). Kept for reference/reuse.
 
-## Usage
+## Prerequisites
 
-1. In NX: **File → Execute → NX Open…**
-2. Select `create_part.py`.
-3. In the **Create Part** dialog, enter a Name and Description, then click **OK**.
-4. The part is created as a `BE9_Design` item with an auto-assigned part number.
-   The result is logged to the Listing Window, e.g.
-   `Created part: 1135393-001.01/test name`.
+- **NX 2506** with an active **Teamcenter** session (managed mode).
+- **Microsoft Edge** (pre-installed on Windows 10/11) — the scraper drives it.
+- **Python 3.10+** on the machine (for the scraper). Get it from
+  <https://www.python.org/downloads/> and tick *"Add python.exe to PATH"*.
 
-Keep `create_part.py` and `create_part_dialog.dlx` in the **same folder** — the
-script loads the dialog relative to itself.
+## One-click setup
+
+1. Download or clone this repo to a folder, e.g. `C:\Code\Create-McMaster-Part`.
+2. **Double-click `setup.bat`.**
+
+That creates the Python virtual environment the scraper needs, installs its
+dependencies (works behind the corporate SSL proxy via `pip-system-certs`), and
+opens a browser so you can log in to McMaster once. Re-running it is safe.
+
+> `setup.bat` puts the environment in `.venv` next to the scripts, and
+> `create_VENDOR_part.py` finds it automatically — no environment variables to
+> set. Pass `nologin` (`setup.bat nologin`) to skip the McMaster login step.
+
+## Create a part
+
+1. Open **NX 2506** with a Teamcenter session.
+2. **File → Execute → NX Open…** → select **`create_VENDOR_part.py`**.
+3. Enter the **McMaster part number** when prompted.
+4. The tool scrapes the product data, downloads the no-threads Parasolid CAD to
+   `C:\TEMP\MCMASTER`, and shows a **Part Name** dialog pre-filled with the
+   description (edit if you like).
+5. It creates the `BE9_COTS` part, sets its attributes, and imports the CAD.
+   Progress is written to the **Listing Window**.
+
+Attributes set: `DB_PART_NO` = part number, `DB_PART_NAME` = the name you
+confirm, `DB_PART_DESC` = product title (all caps), `HE_Manufacturer` =
+`MCMASTER`, `Part Class` = `Class III`.
+
+Keep each script next to its `.dlx` dialog file(s) and the `scraper/` folder —
+paths are resolved relative to the script.
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `create_part.py` | Main script: prompt for name/description, then create the part. |
-| `create_part_dialog.dlx` | BlockStyler dialog layout (Name + Description fields). |
-| `nx_input.py` | Reusable UF `ask_string` text-prompt helper (kept for reuse). |
-| `new_part.py` | Original recorded journal used as the reference for the Teamcenter workflow. |
-| `.mcp.json` | Config for the `nxopen` MCP server (NX 2506 Python API reference). |
-| `HANDOFF.md` | Deeper notes: key functions, gotchas, and open items. |
-
-> **Note:** `new_part.py` was **generated from inside NX** by recording a journal
-> (**Tools → Journal → Record**) while creating a part through **File → New → Item**.
-> It is not hand-written — it's the machine-recorded reference this automation was
-> reverse-engineered from. You can record similar journals the same way to
-> reverse-engineer other NX workflows.
+| `setup.bat` | One-click setup: venv + dependencies + McMaster login. |
+| `create_VENDOR_part.py` | Main flow: part number → scrape → create COTS part → import CAD. |
+| `create_VENDOR_partno_dialog.dlx` / `create_VENDOR_partname_dialog.dlx` | Part-number and part-name dialogs. |
+| `create_COTS_part.py` | Reusable COTS-part module (scrape is log-only). |
+| `create_part.py` + `create_part_dialog.dlx` | Original Design-part flow. |
+| `scraper/` | Vendored McMaster-Carr scraper (Selenium). See `scraper/VENDORED.md`. |
+| `import_Parasolid.py`, `new_part.py`, `nx_input.py` | Recorded-journal / helper references. |
+| `HANDOFF.md` | Deeper notes: key functions, gotchas, open items. |
 
 ## Notes
 
-- This targets **Teamcenter managed mode**. The native/filesystem `create_part`
-  helper in `create_part.py` will not work in a managed session.
-- Default template is `@DB/model-plain-1-inch-template/A` (inches).
-- See `HANDOFF.md` for the full list of NX Open gotchas discovered while building this.
+- Targets **Teamcenter managed mode**; the native `create_part` helper won't
+  work in a managed session.
+- The scraper needs a McMaster login (cached in a dedicated Edge profile). If the
+  session expires, the tool opens a sign-in window automatically.
+- See `HANDOFF.md` for the full list of NX Open / Teamcenter gotchas.
