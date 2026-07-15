@@ -38,9 +38,11 @@ CALL_CREATE_SPECS = True      # call CreateSpecificationsForLogicalObjects
 # Teamcenter's numbering rule, which AUTO-generates the id (the literal is
 # ignored). Set False for a manual id via the DB_PART_NO attribute + NewFileName.
 USE_NAMING_PATTERN = False
-# Manually set the new file name early (before the PDM builder), mimicking what
-# the interactive File>New dialog does. This is the manual-id attempt.
-SET_NEW_FILENAME = True
+# NewFileName rejects a bare id (validated as a native path) -> dead end.
+SET_NEW_FILENAME = False
+# AutoAssignAttributesWithNamingPattern triggers TC auto-numbering. Skip it to
+# test whether a plain DB_PART_NO attribute alone yields a manual id.
+CALL_AUTOASSIGN = False
 
 
 def _log(lw, msg):
@@ -145,20 +147,23 @@ def main(args):
             opBuilder.CreateLogicalObjects()
         _log(lw, "[ok] {0} logical objects".format(ITEM_TYPE))
 
-        if USE_NAMING_PATTERN:
-            # Quoted literal -> assign PART_NO as the number AND generate the
-            # filename (same path as the working Design flow).
-            titles = ["DB_PART_NO"]
-            patterns = ['"' + PART_NO + '"']
-            _log(lw, "[..] naming pattern: DB_PART_NO = {0}".format(patterns[0]))
+        if not CALL_AUTOASSIGN:
+            _log(lw, "[skip] AutoAssignAttributesWithNamingPattern")
         else:
-            titles, patterns = [], []
-            _log(lw, "[..] empty naming map (DB_PART_NO via attribute)")
-        namingMap = opBuilder.CreateAttributeTitleToNamingPatternMap(titles, patterns)
-        errorList = opBuilder.AutoAssignAttributesWithNamingPattern(
-            [logicalObjects[0]], [namingMap])
-        errorList.Dispose()
-        _dump_errors(lw, opBuilder, "after AutoAssign")
+            if USE_NAMING_PATTERN:
+                # Quoted literal -> assign PART_NO as the number AND generate the
+                # filename (same path as the working Design flow).
+                titles = ["DB_PART_NO"]
+                patterns = ['"' + PART_NO + '"']
+                _log(lw, "[..] naming pattern: DB_PART_NO = {0}".format(patterns[0]))
+            else:
+                titles, patterns = [], []
+                _log(lw, "[..] empty naming map (DB_PART_NO via attribute)")
+            namingMap = opBuilder.CreateAttributeTitleToNamingPatternMap(titles, patterns)
+            errorList = opBuilder.AutoAssignAttributesWithNamingPattern(
+                [logicalObjects[0]], [namingMap])
+            errorList.Dispose()
+            _dump_errors(lw, opBuilder, "after AutoAssign")
 
         attrBuilder = theSession.AttributeManager.CreateAttributePropertiesBuilder(
             NXOpen.BasePart.Null, [],
