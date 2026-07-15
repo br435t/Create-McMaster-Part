@@ -30,6 +30,7 @@ prompting the user for a name and description via a BlockStyler dialog.
 | `nx_input.py` | Reusable UF `ask_string` text-prompt helper (legacy; no longer used but kept for reuse). |
 | `new_part.py` | The original recorded journal (File → New → Item) this work was reverse-engineered from. Reference only. **Generated from inside NX** via **Tools → Journal → Record**, not hand-written. |
 | `import_Parasolid.py` | Recorded journal (File → Import → Parasolid) that the `import_parasolid()` helper in `create_VENDOR_part.py` was derived from. Reference only. |
+| `journal_create_vendorpart.py` | Fresh **working** recording of the COTS create (creates `ID.A/Name`). The source of truth for the required attributes and the `SetAddMaster(False)` fix. Reference only. |
 | `.mcp.json` | Config for the `nxopen` MCP server. |
 
 ## COTS / vendor parts (`create_COTS_part.py`)
@@ -59,8 +60,9 @@ This is the recorded journal wired to the scraper. `main()` does:
    `build_description()` = `title_primary` + `title_secondary`, concatenated and
    **UPPERCASED**; `HE_Manufacturer` = `"MCMASTER"`; `Part Class` = `"Class III"`
    (all but the number are fixed/derived — no name prompt).
-4. Run the File → New → Item body to create the `BE9_COTS` part. The part number
-   is assigned via a quoted-literal naming pattern (see gotcha #9).
+4. Run the File → New → Item body to create the `BE9_COTS` part
+   (`SetAddMaster(False)`, empty naming map, `DB_PART_NO` as an attribute — see
+   gotcha #9).
 5. **Import the downloaded Parasolid** (`import_parasolid()`) into the newly
    created work part — using the actual `*.X_T` path from step 2, guarded so it
    is skipped if the CAD download failed. Import happens after `Commit()`
@@ -145,25 +147,22 @@ Edge browser, which are not available in NX's embedded Python.
    callback, not after `Show()`.
 8. The `.dlx` was hand-built from NX's own sample
    `C:\SPLM\NX\NX2506\MACH\auxiliary\sme\setLicense.dlx` to guarantee a valid schema.
-9. **Assign a specific part number via the naming pattern, not an empty map.**
-   The managed create derives the new part's filename from the numbering
-   mechanism. The auto-numbered Design flow passes a real pattern to
-   `CreateAttributeTitleToNamingPatternMap`/`AutoAssignAttributesWithNamingPattern`,
-   which assigns the number *and* a valid filename. The COTS flow originally
-   used an **empty** naming map plus a plain `DB_PART_NO` attribute; that left
-   the filename unset, so `Commit()` failed with "The new filename is not a
-   valid file specification".
-   - `FileNew.NewFileName` is **not** the fix: setting it to a bare id throws
-     "not a valid file specification" on assignment (it wants a file spec, and
-     managed mode never sets it — the recording didn't either).
-   - Fix: pass the exact number as a **quoted-literal** pattern —
-     `CreateAttributeTitleToNamingPatternMap(["DB_PART_NO"], ['"' + part_no + '"'])`
-     (NX treats a `"..."` segment as a literal, e.g. `'NNNNNNN"-"NNN'`). This
-     assigns `part_no` as the item number through the same path the Design flow
-     uses, producing a valid filename. `DB_PART_NO` is then **not** set again as
-     a plain attribute.
-   `DB_PART_NAME` is the (clean) part number too, and the descriptive text lives
-   in `DB_PART_DESC`, so no filename sanitizing of the name is needed.
+9. **`SetAddMaster(False)` is required for the COTS commit.** A fresh working
+   recording (`journal_create_vendorpart.py`, creates `ID.A/Name`) revealed the
+   real fix for `Commit()` failing with "The new filename is not a valid file
+   specification": call
+   `partOperationCreateBuilder.SetAddMaster(False)` before creating the COTS
+   logical objects. Dead ends ruled out along the way:
+   - `FileNew.NewFileName` is **not** it — setting it to a bare id throws
+     "not a valid file specification" on assignment; managed mode never sets it.
+   - A quoted-literal naming pattern is **not** it either. The working recording
+     uses an **empty** naming map and sets `DB_PART_NO` as a plain attribute
+     (`CreateAttributeTitleToNamingPatternMap([], [])` + `DB_PART_NO` via
+     `AttributePropertiesBuilder`), and commits fine once `SetAddMaster(False)`
+     is present.
+   Required attributes (all present in `create_VENDOR_part.py`): `DB_PART_NO`,
+   `DB_PART_NAME`, `DB_PART_DESC` (category `BE9_COTS`); `HE_Manufacturer`,
+   `Part Class` (category `BE9_COTSRevision`).
 
 ## Status / open items
 

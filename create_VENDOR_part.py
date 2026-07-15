@@ -266,20 +266,17 @@ def main(args) :
     opBuilder.SetOperationSubType(
         NXOpen.PDM.PartOperationCreateBuilder.OperationSubType.FromTemplate)
     opBuilder.SetModelType("master")
+    opBuilder.SetAddMaster(False)   # required for the COTS commit (per recording)
     opBuilder.SetItemType("BE9_COTS")
     opBuilder.DefaultDestinationFolder = "br435t"
 
     logicalObjects = opBuilder.CreateLogicalObjects()
     sourceObjects = logicalObjects[0].GetUserAttributeSourceObjects()
 
-    # Assign the exact McMaster part number as DB_PART_NO through the naming-
-    # pattern mechanism (same path the working Design flow uses). NX naming
-    # patterns treat a "..."-quoted segment as a literal, so a fully quoted
-    # pattern assigns that exact string as the item number -- and, unlike an
-    # empty map + plain attribute, this also produces a valid new filename
-    # (an empty map left NewFileName invalid, failing Commit()).
-    namingMap = opBuilder.CreateAttributeTitleToNamingPatternMap(
-        ["DB_PART_NO"], ['"' + part_no + '"'])
+    # COTS parts are not auto-numbered: register an empty naming map (the part
+    # number is set below as the DB_PART_NO attribute). This matches the working
+    # recorded journal (journal_create_vendorpart.py).
+    namingMap = opBuilder.CreateAttributeTitleToNamingPatternMap([], [])
     errorList = opBuilder.AutoAssignAttributesWithNamingPattern(
         [logicalObjects[0]], [namingMap])
     errorList.Dispose()
@@ -289,9 +286,12 @@ def main(args) :
         NXOpen.AttributePropertiesBuilder.OperationType.Create)
     attrBuilder.SetAttributeObjects([sourceObjects[0]])
 
-    # Item-level attributes (category BE9_COTS). DB_PART_NO is assigned above
-    # via the naming pattern, so it is not set again here.
+    # Item-level attributes (category BE9_COTS).
     attrBuilder.Category = "BE9_COTS"
+    attrBuilder.Title = "DB_PART_NO"
+    attrBuilder.StringValue = part_no
+    attrBuilder.CreateAttribute()
+
     attrBuilder.Title = "DB_PART_NAME"
     attrBuilder.StringValue = part_name
     attrBuilder.CreateAttribute()
