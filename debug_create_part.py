@@ -14,7 +14,7 @@ import NXOpen
 import NXOpen.PDM
 
 # ---- test values (edit freely) ------------------------------------------
-PART_NO = "DEBUG0001"
+PART_NO = "92314A874"
 PART_NAME = "DEBUG NAME"
 PART_DESC = "DEBUG DESCRIPTION 1/4\" x 20"   # note: intentionally has / and "
 MANUFACTURER = "MCMASTER"
@@ -156,9 +156,9 @@ def main(args):
         attrBuilder.SetAttributeObjects([sourceObjects[0]])
 
         attrBuilder.Category = ITEM_CATEGORY
-        # Only set DB_PART_NO as a plain attribute when NOT using the naming
-        # pattern (the pattern already assigns it).
-        if SET_DB_PART_NO_ATTR and not USE_NAMING_PATTERN:
+        # Set DB_PART_NO as a plain attribute (in addition to any naming pattern)
+        # to test whether it controls the resulting item number.
+        if SET_DB_PART_NO_ATTR:
             attrBuilder.Title = "DB_PART_NO"
             attrBuilder.StringValue = PART_NO
             attrBuilder.CreateAttribute()
