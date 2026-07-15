@@ -34,6 +34,11 @@ DOUBLE_CREATE_LOGICAL = True  # call CreateLogicalObjects twice for COTS
 SET_DB_PART_NO_ATTR = True    # set DB_PART_NO as a plain attribute
 CALL_VALIDATE = True          # call ValidateLogicalObjectsToCommit before commit
 CALL_CREATE_SPECS = True      # call CreateSpecificationsForLogicalObjects
+# When True, assign DB_PART_NO via a quoted-literal NAMING PATTERN (the same
+# mechanism the working Design flow uses, which generates a valid filename)
+# instead of an empty map + plain attribute. This is the promising fix for the
+# "new filename is not a valid file specification" error.
+USE_NAMING_PATTERN = True
 
 
 def _log(lw, msg):
@@ -80,9 +85,9 @@ def main(args):
     _log(lw, "=" * 60)
     _log(lw, "debug_create_part.py")
     _log(lw, "  PART_NO={0!r}  ITEM_TYPE={1}".format(PART_NO, ITEM_TYPE))
-    _log(lw, "  flags: detour={0} addMaster={1} doubleCLO={2} dbPartNoAttr={3}".format(
+    _log(lw, "  flags: detour={0} addMaster={1} doubleCLO={2} dbPartNoAttr={3} namingPattern={4}".format(
         USE_DESIGN_DETOUR, CALL_SET_ADD_MASTER, DOUBLE_CREATE_LOGICAL,
-        SET_DB_PART_NO_ATTR))
+        SET_DB_PART_NO_ATTR, USE_NAMING_PATTERN))
     _log(lw, "=" * 60)
 
     fileNew = theSession.Parts.FileNew()
@@ -130,7 +135,16 @@ def main(args):
             opBuilder.CreateLogicalObjects()
         _log(lw, "[ok] {0} logical objects".format(ITEM_TYPE))
 
-        namingMap = opBuilder.CreateAttributeTitleToNamingPatternMap([], [])
+        if USE_NAMING_PATTERN:
+            # Quoted literal -> assign PART_NO as the number AND generate the
+            # filename (same path as the working Design flow).
+            titles = ["DB_PART_NO"]
+            patterns = ['"' + PART_NO + '"']
+            _log(lw, "[..] naming pattern: DB_PART_NO = {0}".format(patterns[0]))
+        else:
+            titles, patterns = [], []
+            _log(lw, "[..] empty naming map (DB_PART_NO via attribute)")
+        namingMap = opBuilder.CreateAttributeTitleToNamingPatternMap(titles, patterns)
         errorList = opBuilder.AutoAssignAttributesWithNamingPattern(
             [logicalObjects[0]], [namingMap])
         errorList.Dispose()
@@ -142,7 +156,9 @@ def main(args):
         attrBuilder.SetAttributeObjects([sourceObjects[0]])
 
         attrBuilder.Category = ITEM_CATEGORY
-        if SET_DB_PART_NO_ATTR:
+        # Only set DB_PART_NO as a plain attribute when NOT using the naming
+        # pattern (the pattern already assigns it).
+        if SET_DB_PART_NO_ATTR and not USE_NAMING_PATTERN:
             attrBuilder.Title = "DB_PART_NO"
             attrBuilder.StringValue = PART_NO
             attrBuilder.CreateAttribute()
