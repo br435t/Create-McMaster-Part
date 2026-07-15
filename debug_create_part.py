@@ -32,6 +32,8 @@ USE_DESIGN_DETOUR = True      # do the BE9_Design CreateLogicalObjects first
 CALL_SET_ADD_MASTER = True    # opBuilder.SetAddMaster(False)
 DOUBLE_CREATE_LOGICAL = True  # call CreateLogicalObjects twice for COTS
 SET_DB_PART_NO_ATTR = True    # set DB_PART_NO as a plain attribute
+CALL_VALIDATE = True          # call ValidateLogicalObjectsToCommit before commit
+CALL_CREATE_SPECS = True      # call CreateSpecificationsForLogicalObjects
 
 
 def _log(lw, msg):
@@ -153,23 +155,29 @@ def main(args):
         fileNew.MakeDisplayedPart = True
         fileNew.DisplayPartOption = NXOpen.DisplayPartOption.AllowAdditional
 
-        _log(lw, "[..] ValidateLogicalObjectsToCommit ...")
-        try:
-            opBuilder.ValidateLogicalObjectsToCommit()
-        except Exception as ex:
-            _log(lw, "[FAIL] Validate raised: {0}".format(ex))
-            _dump_errors(lw, opBuilder, "Validate fail")
-            raise
-        _dump_errors(lw, opBuilder, "after Validate")
+        if CALL_VALIDATE:
+            _log(lw, "[..] ValidateLogicalObjectsToCommit ...")
+            try:
+                opBuilder.ValidateLogicalObjectsToCommit()
+            except Exception as ex:
+                _log(lw, "[FAIL] Validate raised: {0}".format(ex))
+                _dump_errors(lw, opBuilder, "Validate fail")
+                raise
+            _dump_errors(lw, opBuilder, "after Validate")
+        else:
+            _log(lw, "[skip] ValidateLogicalObjectsToCommit")
 
-        _log(lw, "[..] CreateSpecificationsForLogicalObjects ...")
-        try:
-            opBuilder.CreateSpecificationsForLogicalObjects([logicalObjects[0]])
-        except Exception as ex:
-            _log(lw, "[FAIL] CreateSpecs raised: {0}".format(ex))
-            _dump_errors(lw, opBuilder, "CreateSpecs fail")
-            raise
-        _dump_errors(lw, opBuilder, "after CreateSpecs")
+        if CALL_CREATE_SPECS:
+            _log(lw, "[..] CreateSpecificationsForLogicalObjects ...")
+            try:
+                opBuilder.CreateSpecificationsForLogicalObjects([logicalObjects[0]])
+            except Exception as ex:
+                _log(lw, "[FAIL] CreateSpecs raised: {0}".format(ex))
+                _dump_errors(lw, opBuilder, "CreateSpecs fail")
+                raise
+            _dump_errors(lw, opBuilder, "after CreateSpecs")
+        else:
+            _log(lw, "[skip] CreateSpecificationsForLogicalObjects")
 
         _log(lw, "[..] fileNew.Commit() ...")
         try:
