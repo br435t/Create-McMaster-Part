@@ -11,9 +11,8 @@ import NXOpen.BlockStyler
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 
-# Single-field BlockStyler dialogs (generated to match create_part_dialog.dlx).
+# Single-field BlockStyler dialog for the part-number prompt.
 _PARTNO_DLX = os.path.join(_HERE, "create_VENDOR_partno_dialog.dlx")
-_PARTNAME_DLX = os.path.join(_HERE, "create_VENDOR_partname_dialog.dlx")
 
 # Vendored McMaster scraper + where its output lands.
 _SCRAPER_SCRIPT = os.path.join(_HERE, "scraper", "mcmaster_scraper.py")
@@ -185,21 +184,6 @@ def build_description(data):
     return " ".join(p for p in (primary, secondary) if p).upper()
 
 
-def make_filename_safe(name):
-    """Sanitize a part name so NX can derive a valid part filename from it.
-
-    In Teamcenter managed mode NX builds the new part's filename from its name,
-    and Windows filenames cannot contain  < > : " / \\ | ? *  -- but McMaster
-    titles routinely use / and " (e.g. '1/4"-20'). Commit() otherwise fails with
-    "The new filename is not a valid file specification". The full, unmodified
-    text is still stored in the DB_PART_DESC attribute.
-    """
-    name = name.replace('"', 'in').replace('/', '-').replace('\\', '-')
-    for bad in '<>:|?*':
-        name = name.replace(bad, '')
-    return " ".join(name.split())  # collapse whitespace, trim ends
-
-
 def import_parasolid(the_session, input_file, curves=True, surfaces=True, solids=True):
     """Import a Parasolid (*.x_t) file into the current work part.
 
@@ -254,26 +238,12 @@ def main(args) :
 
     # --- 3. Derive attribute values ---
     part_no = (data.get("part_number") or entered_pn).strip()
+    part_name = part_no                          # DB_PART_NAME = the part number
     part_desc = build_description(data)          # title_primary + secondary, UPPER
     manufacturer = "MCMASTER"                    # hardcoded
     part_class = "Class III"                     # hardcoded
+    lw.WriteLine("  Name       : {0}".format(part_name))
     lw.WriteLine("  Description: {0}".format(part_desc))
-
-    # --- 4. Ask for the part name (pre-filled with the description, all caps) ---
-    part_name = prompt_string(_PARTNAME_DLX, "partName", default=part_desc)
-    if part_name is None:
-        lw.WriteLine("Cancelled: part name dialog dismissed.")
-        return
-    if not part_name:
-        lw.WriteLine("Cancelled: no part name entered.")
-        return
-
-    # The part name becomes the part filename; strip illegal filename chars
-    # (the full description is preserved in DB_PART_DESC).
-    safe_name = make_filename_safe(part_name)
-    if safe_name != part_name:
-        lw.WriteLine("  Part name sanitized for filename: {0}".format(safe_name))
-    part_name = safe_name
 
     lw.WriteLine("Creating COTS part {0} ...".format(part_no))
     # --- 5. Create the BE9_COTS item (File > New > Item) ---
