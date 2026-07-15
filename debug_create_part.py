@@ -41,26 +41,36 @@ def _log(lw, msg):
 
 
 def _dump_errors(lw, opBuilder, label):
-    """Print PDM error/warning messages for the current builder state."""
+    """Print PDM error/warning messages for the current builder state.
+
+    Fully defensive: the NXOpen binding for GetErrorMessages() can raise
+    SystemError ("error return without exception set") in some states, so each
+    getter is guarded and never aborts the run.
+    """
     try:
         handler = opBuilder.GetErrorMessageHandler(True)
     except Exception as ex:
         _log(lw, "  [{0}] GetErrorMessageHandler failed: {1}".format(label, ex))
         return
+    errs, warns = [], []
     try:
         errs = list(handler.GetErrorMessages() or [])
+    except Exception as ex:
+        _log(lw, "  [{0}] GetErrorMessages failed: {1}".format(label, ex))
+    try:
         warns = list(handler.GetWarningMessages() or [])
-        if not errs and not warns:
-            _log(lw, "  [{0}] (no messages)".format(label))
-        for e in errs:
-            _log(lw, "  [{0}] ERROR: {1}".format(label, e))
-        for w in warns:
-            _log(lw, "  [{0}] warn : {1}".format(label, w))
-    finally:
-        try:
-            handler.Dispose()
-        except Exception:
-            pass
+    except Exception as ex:
+        _log(lw, "  [{0}] GetWarningMessages failed: {1}".format(label, ex))
+    if not errs and not warns:
+        _log(lw, "  [{0}] (no messages)".format(label))
+    for e in errs:
+        _log(lw, "  [{0}] ERROR: {1}".format(label, e))
+    for w in warns:
+        _log(lw, "  [{0}] warn : {1}".format(label, w))
+    try:
+        handler.Dispose()
+    except Exception:
+        pass
 
 
 def main(args):
