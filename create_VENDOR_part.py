@@ -11,8 +11,9 @@ import NXOpen.BlockStyler
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 
-# Single-field BlockStyler dialog for the part-number prompt.
+# Single-field BlockStyler dialogs (part-number and part-name prompts).
 _PARTNO_DLX = os.path.join(_HERE, "create_VENDOR_partno_dialog.dlx")
+_PARTNAME_DLX = os.path.join(_HERE, "create_VENDOR_partname_dialog.dlx")
 
 # Vendored McMaster scraper + where its output lands.
 _SCRAPER_SCRIPT = os.path.join(_HERE, "scraper", "mcmaster_scraper.py")
@@ -238,12 +239,21 @@ def main(args) :
 
     # --- 3. Derive attribute values ---
     part_no = (data.get("part_number") or entered_pn).strip()
-    part_name = part_no                          # DB_PART_NAME = the part number
     part_desc = build_description(data)          # title_primary + secondary, UPPER
     manufacturer = "MCMASTER"                    # hardcoded
     part_class = "Class III"                     # hardcoded
-    lw.WriteLine("  Name       : {0}".format(part_name))
     lw.WriteLine("  Description: {0}".format(part_desc))
+
+    # --- 4. Ask the user for the part name (DB_PART_NAME), prefilled with the
+    #        description as an editable default ---
+    part_name = prompt_string(_PARTNAME_DLX, "partName", default=part_desc)
+    if part_name is None:
+        lw.WriteLine("Cancelled: part name dialog dismissed.")
+        return
+    if not part_name:
+        lw.WriteLine("Cancelled: no part name entered.")
+        return
+    lw.WriteLine("  Name       : {0}".format(part_name))
 
     lw.WriteLine("Creating COTS part {0} ...".format(part_no))
     # --- 5. Create the BE9_COTS item (File > New > Item) ---

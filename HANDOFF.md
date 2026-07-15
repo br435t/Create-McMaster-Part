@@ -25,7 +25,7 @@ prompting the user for a name and description via a BlockStyler dialog.
 | `create_VENDOR_part.py` | Recorded-journal COTS flow driven by the **McMaster scraper**: prompt for a part number → scrape JSON + download CAD → derive attributes → prompt for part name → create the part. |
 | `create_VENDOR_part_dialog.dlx` | 5-field COTS dialog (Part Number, Part Name, Description, Manufacturer, Part Class). Used by `create_COTS_part.py`. Hand-authored; not yet round-tripped through Block UI Styler. |
 | `create_VENDOR_partno_dialog.dlx` | Single-field "Part Number" dialog (block id `partNo`) — step 1 of `create_VENDOR_part.py`. |
-| `create_VENDOR_partname_dialog.dlx` | Single-field "Part Name" dialog. **No longer used** — `DB_PART_NAME` is now the part number, so the name prompt was removed. Kept for reference. |
+| `create_VENDOR_partname_dialog.dlx` | Single-field "Part Name" dialog (block id `partName`) — step 4 of `create_VENDOR_part.py`, prefilled with the description. Sets `DB_PART_NAME`. |
 | `scraper/` | Vendored copy of the McMaster-Carr scraper (`br435t/McMaster-scraper`). See `scraper/VENDORED.md`. Run as a subprocess, not imported into NX. |
 | `nx_input.py` | Reusable UF `ask_string` text-prompt helper (legacy; no longer used but kept for reuse). |
 | `new_part.py` | The original recorded journal (File → New → Item) this work was reverse-engineered from. Reference only. **Generated from inside NX** via **Tools → Journal → Record**, not hand-written. |
@@ -55,15 +55,15 @@ This is the recorded journal wired to the scraper. `main()` does:
 2. **`fetch_mcmaster(pn)`** — subprocess to the external scraper: `scrape --out
    C:\TEMP\MCMASTER` (writes `<pn>.json`) then `cad --out C:\TEMP\MCMASTER
    --json` (downloads the default 3-D Parasolid, **no-threads** `*.X_T`).
-3. **Derive attributes:** `part_no` = scraped `part_number`;
-   `DB_PART_NAME` = the **part number** (`part_no`); `DB_PART_DESC` =
+3. **Derive attributes:** `part_no` = scraped `part_number`; `DB_PART_DESC` =
    `build_description()` = `title_primary` + `title_secondary`, concatenated and
-   **UPPERCASED**; `HE_Manufacturer` = `"MCMASTER"`; `Part Class` = `"Class III"`
-   (all but the number are fixed/derived — no name prompt).
-4. Run the File → New → Item body to create the `BE9_COTS` part
+   **UPPERCASED**; `HE_Manufacturer` = `"MCMASTER"`; `Part Class` = `"Class III"`.
+4. **Prompt for the part name** (`create_VENDOR_partname_dialog.dlx`), prefilled
+   with the description as an editable default → `DB_PART_NAME`.
+5. Run the File → New → Item body to create the `BE9_COTS` part
    (`SetAddMaster(False)`, empty naming map, `DB_PART_NO` as an attribute — see
    gotcha #9).
-5. **Import the downloaded Parasolid** (`import_parasolid()`) into the newly
+6. **Import the downloaded Parasolid** (`import_parasolid()`) into the newly
    created work part — using the actual `*.X_T` path from step 2, guarded so it
    is skipped if the CAD download failed. Import happens after `Commit()`
    because the part must exist first.
