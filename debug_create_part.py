@@ -153,18 +153,30 @@ def main(args):
         fileNew.MakeDisplayedPart = True
         fileNew.DisplayPartOption = NXOpen.DisplayPartOption.AllowAdditional
 
-        opBuilder.ValidateLogicalObjectsToCommit()
+        _log(lw, "[..] ValidateLogicalObjectsToCommit ...")
+        try:
+            opBuilder.ValidateLogicalObjectsToCommit()
+        except Exception as ex:
+            _log(lw, "[FAIL] Validate raised: {0}".format(ex))
+            _dump_errors(lw, opBuilder, "Validate fail")
+            raise
         _dump_errors(lw, opBuilder, "after Validate")
 
-        opBuilder.CreateSpecificationsForLogicalObjects([logicalObjects[0]])
+        _log(lw, "[..] CreateSpecificationsForLogicalObjects ...")
+        try:
+            opBuilder.CreateSpecificationsForLogicalObjects([logicalObjects[0]])
+        except Exception as ex:
+            _log(lw, "[FAIL] CreateSpecs raised: {0}".format(ex))
+            _dump_errors(lw, opBuilder, "CreateSpecs fail")
+            raise
         _dump_errors(lw, opBuilder, "after CreateSpecs")
 
         _log(lw, "[..] fileNew.Commit() ...")
         try:
             fileNew.Commit()
-        except NXOpen.NXException as ex:
+        except Exception as ex:
             _log(lw, "[FAIL] Commit raised: {0}".format(ex))
-            _dump_errors(lw, opBuilder, "after failed Commit")
+            _dump_errors(lw, opBuilder, "Commit fail")
             raise
 
         workPart = theSession.Parts.Work
