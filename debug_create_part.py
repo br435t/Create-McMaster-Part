@@ -31,14 +31,16 @@ REV_CATEGORY = "BE9_COTSRevision"
 USE_DESIGN_DETOUR = True      # do the BE9_Design CreateLogicalObjects first
 CALL_SET_ADD_MASTER = True    # opBuilder.SetAddMaster(False)
 DOUBLE_CREATE_LOGICAL = True  # call CreateLogicalObjects twice for COTS
-SET_DB_PART_NO_ATTR = False   # set DB_PART_NO as a plain attribute
+SET_DB_PART_NO_ATTR = True    # set DB_PART_NO as a plain attribute
 CALL_VALIDATE = True          # call ValidateLogicalObjectsToCommit before commit
 CALL_CREATE_SPECS = True      # call CreateSpecificationsForLogicalObjects
-# When True, assign DB_PART_NO via a quoted-literal NAMING PATTERN (the same
-# mechanism the working Design flow uses, which generates a valid filename)
-# instead of an empty map + plain attribute. This is the promising fix for the
-# "new filename is not a valid file specification" error.
-USE_NAMING_PATTERN = True
+# Assign DB_PART_NO via a quoted-literal NAMING PATTERN. Note: this triggers
+# Teamcenter's numbering rule, which AUTO-generates the id (the literal is
+# ignored). Set False for a manual id via the DB_PART_NO attribute + NewFileName.
+USE_NAMING_PATTERN = False
+# Manually set the new file name early (before the PDM builder), mimicking what
+# the interactive File>New dialog does. This is the manual-id attempt.
+SET_NEW_FILENAME = True
 
 
 def _log(lw, msg):
@@ -85,9 +87,9 @@ def main(args):
     _log(lw, "=" * 60)
     _log(lw, "debug_create_part.py")
     _log(lw, "  PART_NO={0!r}  ITEM_TYPE={1}".format(PART_NO, ITEM_TYPE))
-    _log(lw, "  flags: detour={0} addMaster={1} doubleCLO={2} dbPartNoAttr={3} namingPattern={4}".format(
+    _log(lw, "  flags: detour={0} addMaster={1} doubleCLO={2} dbPartNoAttr={3} namingPattern={4} newFilename={5}".format(
         USE_DESIGN_DETOUR, CALL_SET_ADD_MASTER, DOUBLE_CREATE_LOGICAL,
-        SET_DB_PART_NO_ATTR, USE_NAMING_PATTERN))
+        SET_DB_PART_NO_ATTR, USE_NAMING_PATTERN, SET_NEW_FILENAME))
     _log(lw, "=" * 60)
 
     fileNew = theSession.Parts.FileNew()
@@ -105,6 +107,14 @@ def main(args):
         fileNew.Specialization = ""
         fileNew.SetCanCreateAltrep(False)
         _log(lw, "[ok] template configured")
+
+        if SET_NEW_FILENAME:
+            try:
+                fileNew.NewFileName = PART_NO
+                _log(lw, "[ok] NewFileName set early = {0!r}".format(PART_NO))
+            except Exception as ex:
+                _log(lw, "[FAIL] setting NewFileName={0!r}: {1}".format(PART_NO, ex))
+                raise
 
         opBuilder = theSession.PdmSession.CreateCreateOperationBuilder(
             NXOpen.PDM.PartOperationBuilder.OperationType.Create)
