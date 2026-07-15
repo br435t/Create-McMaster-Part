@@ -185,6 +185,21 @@ def build_description(data):
     return " ".join(p for p in (primary, secondary) if p).upper()
 
 
+def make_filename_safe(name):
+    """Sanitize a part name so NX can derive a valid part filename from it.
+
+    In Teamcenter managed mode NX builds the new part's filename from its name,
+    and Windows filenames cannot contain  < > : " / \\ | ? *  -- but McMaster
+    titles routinely use / and " (e.g. '1/4"-20'). Commit() otherwise fails with
+    "The new filename is not a valid file specification". The full, unmodified
+    text is still stored in the DB_PART_DESC attribute.
+    """
+    name = name.replace('"', 'in').replace('/', '-').replace('\\', '-')
+    for bad in '<>:|?*':
+        name = name.replace(bad, '')
+    return " ".join(name.split())  # collapse whitespace, trim ends
+
+
 def import_parasolid(the_session, input_file, curves=True, surfaces=True, solids=True):
     """Import a Parasolid (*.x_t) file into the current work part.
 
@@ -253,6 +268,13 @@ def main(args) :
     if not part_name:
         lw.WriteLine("Cancelled: no part name entered.")
         return
+
+    # The part name becomes the part filename; strip illegal filename chars
+    # (the full description is preserved in DB_PART_DESC).
+    safe_name = make_filename_safe(part_name)
+    if safe_name != part_name:
+        lw.WriteLine("  Part name sanitized for filename: {0}".format(safe_name))
+    part_name = safe_name
     lw.WriteLine("  Name       : {0}".format(part_name))
 
     lw.WriteLine("Creating COTS part {0} ...".format(part_no))
@@ -276,7 +298,6 @@ def main(args) :
     opBuilder.SetOperationSubType(
         NXOpen.PDM.PartOperationCreateBuilder.OperationSubType.FromTemplate)
     opBuilder.SetModelType("master")
-    opBuilder.SetAddMaster(False)   # required for the COTS commit (per recording)
     opBuilder.SetItemType("BE9_COTS")
     opBuilder.DefaultDestinationFolder = "br435t"
 
