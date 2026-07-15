@@ -339,6 +339,11 @@ def main(args) :
     attrBuilder.CreateAttribute()
 
     # Finalize and commit.
+    # Set the new file's name explicitly. In the auto-numbered Design flow NX
+    # fills this in from the naming pattern, but the COTS flow uses an empty
+    # naming map, so without this Commit() fails with "The new filename is not a
+    # valid file specification". Use the (clean) part number as the filename.
+    fileNew.NewFileName = part_no
     fileNew.MasterFileName = ""
     fileNew.MakeDisplayedPart = True
     fileNew.DisplayPartOption = NXOpen.DisplayPartOption.AllowAdditional
