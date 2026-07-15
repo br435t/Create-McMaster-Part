@@ -145,17 +145,25 @@ Edge browser, which are not available in NX's embedded Python.
    callback, not after `Show()`.
 8. The `.dlx` was hand-built from NX's own sample
    `C:\SPLM\NX\NX2506\MACH\auxiliary\sme\setLicense.dlx` to guarantee a valid schema.
-9. **`FileNew.NewFileName` must be set for the COTS flow.** The auto-numbered
-   Design flow lets NX fill in the new filename from the naming pattern, but the
-   COTS flow uses an *empty* naming map, so `NewFileName` stays empty and
-   `Commit()` fails with "The new filename is not a valid file specification".
-   `create_VENDOR_part.py` sets `fileNew.NewFileName = part_no` (the clean part
-   number) before commit. The item number itself comes from the `DB_PART_NO`
-   attribute (per the API, that is how you assign a managed part number).
-   As defense-in-depth the part name is also run through `make_filename_safe()`
-   (`"`→`in`, `/`→`-`, others stripped, since McMaster titles use `/` and `"`);
-   the full raw text is kept in `DB_PART_DESC`. If a *length* error appears
-   instead, the TC name limit is being hit — truncate the name.
+9. **Assign a specific part number via the naming pattern, not an empty map.**
+   The managed create derives the new part's filename from the numbering
+   mechanism. The auto-numbered Design flow passes a real pattern to
+   `CreateAttributeTitleToNamingPatternMap`/`AutoAssignAttributesWithNamingPattern`,
+   which assigns the number *and* a valid filename. The COTS flow originally
+   used an **empty** naming map plus a plain `DB_PART_NO` attribute; that left
+   the filename unset, so `Commit()` failed with "The new filename is not a
+   valid file specification".
+   - `FileNew.NewFileName` is **not** the fix: setting it to a bare id throws
+     "not a valid file specification" on assignment (it wants a file spec, and
+     managed mode never sets it — the recording didn't either).
+   - Fix: pass the exact number as a **quoted-literal** pattern —
+     `CreateAttributeTitleToNamingPatternMap(["DB_PART_NO"], ['"' + part_no + '"'])`
+     (NX treats a `"..."` segment as a literal, e.g. `'NNNNNNN"-"NNN'`). This
+     assigns `part_no` as the item number through the same path the Design flow
+     uses, producing a valid filename. `DB_PART_NO` is then **not** set again as
+     a plain attribute.
+   The part name is still run through `make_filename_safe()` as defense-in-depth
+   (`"`→`in`, `/`→`-`); the full raw text stays in `DB_PART_DESC`.
 
 ## Status / open items
 

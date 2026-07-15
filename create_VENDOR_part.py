@@ -302,9 +302,14 @@ def main(args) :
     logicalObjects = opBuilder.CreateLogicalObjects()
     sourceObjects = logicalObjects[0].GetUserAttributeSourceObjects()
 
-    # COTS parts are not auto-numbered; register an empty naming map so the
-    # part number comes from the DB_PART_NO attribute set below.
-    namingMap = opBuilder.CreateAttributeTitleToNamingPatternMap([], [])
+    # Assign the exact McMaster part number as DB_PART_NO through the naming-
+    # pattern mechanism (same path the working Design flow uses). NX naming
+    # patterns treat a "..."-quoted segment as a literal, so a fully quoted
+    # pattern assigns that exact string as the item number -- and, unlike an
+    # empty map + plain attribute, this also produces a valid new filename
+    # (an empty map left NewFileName invalid, failing Commit()).
+    namingMap = opBuilder.CreateAttributeTitleToNamingPatternMap(
+        ["DB_PART_NO"], ['"' + part_no + '"'])
     errorList = opBuilder.AutoAssignAttributesWithNamingPattern(
         [logicalObjects[0]], [namingMap])
     errorList.Dispose()
@@ -314,12 +319,9 @@ def main(args) :
         NXOpen.AttributePropertiesBuilder.OperationType.Create)
     attrBuilder.SetAttributeObjects([sourceObjects[0]])
 
-    # Item-level attributes (category BE9_COTS).
+    # Item-level attributes (category BE9_COTS). DB_PART_NO is assigned above
+    # via the naming pattern, so it is not set again here.
     attrBuilder.Category = "BE9_COTS"
-    attrBuilder.Title = "DB_PART_NO"
-    attrBuilder.StringValue = part_no
-    attrBuilder.CreateAttribute()
-
     attrBuilder.Title = "DB_PART_NAME"
     attrBuilder.StringValue = part_name
     attrBuilder.CreateAttribute()
@@ -339,11 +341,6 @@ def main(args) :
     attrBuilder.CreateAttribute()
 
     # Finalize and commit.
-    # Set the new file's name explicitly. In the auto-numbered Design flow NX
-    # fills this in from the naming pattern, but the COTS flow uses an empty
-    # naming map, so without this Commit() fails with "The new filename is not a
-    # valid file specification". Use the (clean) part number as the filename.
-    fileNew.NewFileName = part_no
     fileNew.MasterFileName = ""
     fileNew.MakeDisplayedPart = True
     fileNew.DisplayPartOption = NXOpen.DisplayPartOption.AllowAdditional
