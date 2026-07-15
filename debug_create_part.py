@@ -31,7 +31,7 @@ REV_CATEGORY = "BE9_COTSRevision"
 USE_DESIGN_DETOUR = True      # do the BE9_Design CreateLogicalObjects first
 CALL_SET_ADD_MASTER = True    # opBuilder.SetAddMaster(False)
 DOUBLE_CREATE_LOGICAL = True  # call CreateLogicalObjects twice for COTS
-SET_DB_PART_NO_ATTR = True    # set DB_PART_NO as a plain attribute
+SET_DB_PART_NO_ATTR = False   # set DB_PART_NO as a plain attribute
 CALL_VALIDATE = True          # call ValidateLogicalObjectsToCommit before commit
 CALL_CREATE_SPECS = True      # call CreateSpecificationsForLogicalObjects
 # When True, assign DB_PART_NO via a quoted-literal NAMING PATTERN (the same
@@ -176,6 +176,12 @@ def main(args):
         attrBuilder.StringValue = PART_CLASS
         attrBuilder.CreateAttribute()
         _log(lw, "[ok] attributes set")
+
+        # What filename did the create mechanism produce? (diagnostic)
+        try:
+            _log(lw, "  NewFileName so far = {0!r}".format(fileNew.NewFileName))
+        except Exception as ex:
+            _log(lw, "  NewFileName read failed: {0}".format(ex))
 
         fileNew.MasterFileName = ""
         fileNew.MakeDisplayedPart = True
