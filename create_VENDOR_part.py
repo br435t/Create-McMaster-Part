@@ -243,6 +243,16 @@ def main(args) :
         return
 
     # --- 2. Scrape JSON + download the no-threads Parasolid CAD ---
+    # Modal notice so the user sees what's happening before the scraper runs
+    # (it freezes NX's UI while Edge runs, so Listing Window text won't repaint
+    # until afterward). Blocks until the user clicks OK.
+    NXOpen.UI.GetUI().NXMessageBox.Show(
+        "McMaster Scraper",
+        NXOpen.NXMessageBox.DialogType.Information,
+        "Starting the McMaster scraper for part {0}.\n\n"
+        "This opens Microsoft Edge in the background and may take up to a "
+        "minute per step (scrape, then CAD download).\n\n"
+        "Click OK to continue.".format(entered_pn))
     lw.WriteLine("Fetching McMaster data for {0} -> {1} ...".format(
         entered_pn, MCMASTER_OUT))
     fetched = fetch_mcmaster(entered_pn, log=lw.WriteLine)
