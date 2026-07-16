@@ -19,6 +19,11 @@ _PARTNAME_DLX = os.path.join(_HERE, "create_VENDOR_partname_dialog.dlx")
 _SCRAPER_SCRIPT = os.path.join(_HERE, "scraper", "mcmaster_scraper.py")
 MCMASTER_OUT = r"C:\TEMP\MCMASTER"
 
+# Teamcenter destination folder for created COTS parts. The ":" prefix is TC
+# folder syntax; using the real ":MCMASTER" folder (per the working recording
+# journal_create_vendor_part.py) is what lets the manual-id Commit() succeed.
+MCMASTER_TC_FOLDER = ":MCMASTER"
+
 
 def prompt_string(dlx_path, block_id, default=None):
     """Show a single-field string BlockStyler dialog and return its value.
@@ -298,8 +303,9 @@ def main(args) :
     opBuilder.SetOperationSubType(
         NXOpen.PDM.PartOperationCreateBuilder.OperationSubType.FromTemplate)
     opBuilder.SetModelType("master")
+    opBuilder.SetAddMaster(False)
     opBuilder.SetItemType("BE9_COTS")
-    opBuilder.DefaultDestinationFolder = "br435t"
+    opBuilder.DefaultDestinationFolder = MCMASTER_TC_FOLDER
 
     logicalObjects = opBuilder.CreateLogicalObjects()
     sourceObjects = logicalObjects[0].GetUserAttributeSourceObjects()

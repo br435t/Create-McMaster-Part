@@ -1,5 +1,5 @@
 ﻿# NX 2506
-# Journal created by br435t on Wed Jul 15 09:16:34 2026 Pacific Daylight Time
+# Journal created by br435t on Thu Jul 16 12:03:45 2026 Pacific Daylight Time
 #
 import math
 import NXOpen
@@ -52,7 +52,7 @@ def main(args) :
     
     sourceobjects1 = logicalobjects1[0].GetUserAttributeSourceObjects()
     
-    partOperationCreateBuilder1.DefaultDestinationFolder = "br435t"
+    partOperationCreateBuilder1.DefaultDestinationFolder = ":MCMASTER"
     
     sourceobjects2 = logicalobjects1[0].GetUserAttributeSourceObjects()
     
@@ -121,7 +121,7 @@ def main(args) :
     
     attributePropertiesBuilder1.Category = "BE9_COTS"
     
-    attributePropertiesBuilder1.StringValue = "ID"
+    attributePropertiesBuilder1.StringValue = "91310A532"
     
     attributePropertiesBuilder1.Category = "BE9_COTS"
     
@@ -129,15 +129,13 @@ def main(args) :
     
     attributePropertiesBuilder1.Title = "DB_PART_NAME"
     
-    attributePropertiesBuilder1.StringValue = "Name"
+    attributePropertiesBuilder1.StringValue = "High-Strength Class 10.9 Steel Hex Head Screw\nZinc-Plated, M8 x 1.25 mm Thread Size, 30 mm Long"
     
     attributePropertiesBuilder1.Category = "BE9_COTS"
     
     changed2 = attributePropertiesBuilder1.CreateAttribute()
     
     attributePropertiesBuilder1.Title = "DB_PART_DESC"
-    
-    attributePropertiesBuilder1.StringValue = "Description"
     
     attributePropertiesBuilder1.Category = "BE9_COTS"
     
@@ -147,7 +145,7 @@ def main(args) :
     
     attributePropertiesBuilder1.Category = "BE9_COTSRevision"
     
-    attributePropertiesBuilder1.StringValue = "McMaster"
+    attributePropertiesBuilder1.StringValue = "MCMASTER"
     
     attributePropertiesBuilder1.Category = "BE9_COTSRevision"
     
@@ -207,8 +205,10 @@ def main(args) :
     
     nXObject2 = fileNew1.Commit()
     
-    workPart = theSession.Parts.Work # ID.A/Name
-    displayPart = theSession.Parts.Display # ID.A/Name
+    workPart = theSession.Parts.Work # 91310A532.A/High-Strength Class 10.9 Steel Hex Head Screw
+    Zinc-Plated, M8 x 1.25 mm Thread Size, 30 mm Long
+    displayPart = theSession.Parts.Display # 91310A532.A/High-Strength Class 10.9 Steel Hex Head Screw
+    Zinc-Plated, M8 x 1.25 mm Thread Size, 30 mm Long
     errorMessageHandler4 = partOperationCreateBuilder1.GetErrorMessageHandler(True)
     
     theSession.DeleteUndoMark(markId3, None)
@@ -216,8 +216,6 @@ def main(args) :
     fileNew1.Destroy()
     
     attributePropertiesBuilder1.Destroy()
-    
-    theSession.CleanUpFacetedFacesAndEdges()
     
     # ----------------------------------------------
     #   Menu: Tools->Automation->Journal->Stop Recording
