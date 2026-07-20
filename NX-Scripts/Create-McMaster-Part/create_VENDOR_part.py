@@ -115,10 +115,19 @@ def _scraper_python():
       1. MCMASTER_SCRAPER_PYTHON environment variable
       2. the repo-root venv (<root>\\.venv\\Scripts\\python.exe)
       3. "python" on PATH
+
+    The env var is skipped when it points at a full path that no longer
+    exists (e.g. a stale value left over from a moved repo) so we fall through
+    to the repo-root .venv instead of hard-aborting. A bare command name
+    (no directory component, e.g. just "python") is trusted as-is since it is
+    resolved on PATH, not on disk.
     """
     env = os.environ.get("MCMASTER_SCRAPER_PYTHON")
     if env:
-        return env
+        has_dir = bool(os.path.dirname(env))
+        if not has_dir or os.path.exists(env):
+            return env
+        # else: stale/broken path -> ignore and fall through
     venv_py = os.path.join(_ROOT, ".venv", "Scripts", "python.exe")
     if os.path.exists(venv_py):
         return venv_py
