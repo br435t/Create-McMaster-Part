@@ -60,7 +60,7 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-"%VENV_PY%" -m pip install --disable-pip-version-check -r scraper\requirements.txt
+"%VENV_PY%" -m pip install --disable-pip-version-check -r requirements.txt
 if errorlevel 1 (
   echo [ERROR] Could not install scraper requirements. See messages above.
   pause
@@ -71,11 +71,11 @@ echo.
 REM --- 4. Log in to McMaster (opens Edge) ------------------------------
 if /i "%~1"=="nologin" (
   echo [4/4] Skipping McMaster login ^(nologin^). You can run it later with:
-  echo        .venv\Scripts\python.exe scraper\mcmaster_scraper.py login
+  echo        .venv\Scripts\python.exe Tools\scraper\mcmaster_scraper.py login
 ) else (
   echo [4/4] Opening McMaster login - sign in when the browser appears.
   echo        ^(This is optional; the tool also prompts to log in on demand.^)
-  "%VENV_PY%" scraper\mcmaster_scraper.py login
+  "%VENV_PY%" Tools\scraper\mcmaster_scraper.py login
 )
 echo.
 
@@ -85,7 +85,7 @@ echo.
 echo   To create a part:
 echo     1. Open NX 2506 with an active Teamcenter session.
 echo     2. File ^> Execute ^> NX Open...
-echo     3. Select:  %CD%\create_VENDOR_part.py
+echo     3. Select:  %CD%\NX-Scripts\Create-McMaster-Part\create_VENDOR_part.py
 echo ============================================================
 echo.
 pause

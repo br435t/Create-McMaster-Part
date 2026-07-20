@@ -1,0 +1,17 @@
+# Python dependencies for the Helion NX Tools repo.
+#
+# These are for the external Tools (run OUTSIDE NX with a normal Python 3.10+),
+# not for the NX journals under NX-Scripts/ — those use NX's embedded NXOpen
+# API, which is not pip-installable.
+#
+# Install via setup.bat (creates .venv and installs these behind the corporate
+# SSL proxy), or manually:  py -m pip install -r requirements.txt
+
+# Makes pip/requests trust the Windows certificate store, where the corporate
+# root CA lives — needed to install behind the SSL-inspecting proxy. (setup.bat
+# bootstraps this first with --trusted-host, since that first install is what
+# the proxy blocks.)
+pip-system-certs
+
+# McMaster-Carr scraper (Tools/scraper) — browser automation via Selenium.
+-r Tools/scraper/requirements.txt

@@ -11,12 +11,34 @@ import NXOpen.BlockStyler
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 
-# Single-field BlockStyler dialogs (part-number and part-name prompts).
+
+def _repo_root():
+    """Walk up from this script to the repo root.
+
+    This script lives a couple of levels down (NX-Scripts/Create-McMaster-Part/)
+    while shared resources (Tools/, .venv) sit at the repo root. Find the root
+    by looking for a marker (.git / .venv / Tools) walking upward.
+    """
+    d = _HERE
+    for _ in range(6):
+        if any(os.path.isdir(os.path.join(d, m)) for m in (".git", ".venv", "Tools")):
+            return d
+        parent = os.path.dirname(d)
+        if parent == d:
+            break
+        d = parent
+    return _HERE
+
+
+_ROOT = _repo_root()
+
+# Single-field BlockStyler dialogs (part-number and part-name prompts). These
+# sit next to this script.
 _PARTNO_DLX = os.path.join(_HERE, "create_VENDOR_partno_dialog.dlx")
 _PARTNAME_DLX = os.path.join(_HERE, "create_VENDOR_partname_dialog.dlx")
 
-# Vendored McMaster scraper + where its output lands.
-_SCRAPER_SCRIPT = os.path.join(_HERE, "scraper", "mcmaster_scraper.py")
+# Vendored McMaster scraper (under Tools/ at the repo root) + output dir.
+_SCRAPER_SCRIPT = os.path.join(_ROOT, "Tools", "scraper", "mcmaster_scraper.py")
 MCMASTER_OUT = r"C:\TEMP\MCMASTER"
 
 # Teamcenter destination folder for created COTS parts. The ":" prefix is TC
@@ -87,17 +109,17 @@ def prompt_string(dlx_path, block_id, default=None):
 
 
 def _scraper_python():
-    """External Python that has selenium installed (see scraper/VENDORED.md).
+    """External Python that has selenium installed (see Tools/scraper/VENDORED.md).
 
     Preference order (so it works even when NX didn't inherit the env var):
       1. MCMASTER_SCRAPER_PYTHON environment variable
-      2. the repo-local venv next to this script (.venv\\Scripts\\python.exe)
+      2. the repo-root venv (<root>\\.venv\\Scripts\\python.exe)
       3. "python" on PATH
     """
     env = os.environ.get("MCMASTER_SCRAPER_PYTHON")
     if env:
         return env
-    venv_py = os.path.join(_HERE, ".venv", "Scripts", "python.exe")
+    venv_py = os.path.join(_ROOT, ".venv", "Scripts", "python.exe")
     if os.path.exists(venv_py):
         return venv_py
     return "python"
@@ -128,7 +150,7 @@ def fetch_mcmaster(part_no, out_dir=MCMASTER_OUT, log=None):
     result = {"data": None, "json_file": None, "cad_file": None,
               "error": None, "cad_error": None}  # type: dict
     _log = log or (lambda m: None)
-    _log("  running scraper/mcmaster_scraper.py ({0})".format(_scraper_python()))
+    _log("  running Tools/scraper/mcmaster_scraper.py ({0})".format(_scraper_python()))
     try:
         os.makedirs(out_dir, exist_ok=True)
     except OSError as ex:
@@ -272,7 +294,7 @@ def main(args) :
     part_desc = build_description(data)          # title_primary + secondary, UPPER
     manufacturer = "MCMASTER"                    # hardcoded
     part_class = "Class III"                     # hardcoded
-    lw.WriteLine("  Description: {0}".format(part_desc))
+    lw.WriteLine("  Description: {0}".format(make_filename_safe(part_desc)))
 
     # --- 4. Ask the user for the part name (DB_PART_NAME), prefilled with the
     #        description as an editable default ---
@@ -383,7 +405,6 @@ def main(args) :
         lw.WriteLine("No CAD file available; skipped Parasolid import.")
 
     theSession.CleanUpFacetedFacesAndEdges()
-    lw.WriteLine("Done (create_VENDOR_part.py).")
 
 
 if __name__ == '__main__':
