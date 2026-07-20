@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "nxopen": {
-      "command": "py",
-      "args": ["C:\\Code\\NX Open\\nxopen_python_ref\\nxopen_mcp.py"]
-    }
-  }
-}

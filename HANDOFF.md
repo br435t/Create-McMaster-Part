@@ -15,25 +15,39 @@ prompting the user for a name and description via a BlockStyler dialog.
   stubs — use it to look up signatures. **Note:** it does **not** index
   `NXOpen.UF` (that subsystem has no stubs on disk).
 
-## Files
+## Repository layout
 
-| File | Purpose |
+Organized by where the code runs:
+
+- **`NX-Scripts/`** — scripts executed **inside NX** (File → Execute → NX Open…).
+- **`Tools/`** — external support code run **outside NX** as a subprocess
+  (scrapers, shared logic, future tools).
+- **`example_journals/`** — journals **recorded in NX** (Tools → Journal →
+  Record), kept as reference for reverse-engineering NX Open calls. Not run
+  directly.
+- **Repo root** — `setup.bat`, `.venv/` (git-ignored), the docs, and legacy
+  scripts (`create_part.py`, `new_part.py`, `nx_input.py`).
+
+An NX script finds the repo root by walking up, so it locates `Tools/` and
+`.venv/` no matter how deep it sits under `NX-Scripts/`.
+
+### Files
+
+| Path | Purpose |
 |------|---------|
-| `create_part.py` | **Design** part. Prompts (BlockStyler dialog), then creates a `BE9_Design` item with an auto-assigned part number. |
-| `create_part_dialog.dlx` | BlockStyler dialog layout (Name + Description fields). Must sit next to `create_part.py`. |
-| `create_COTS_part.py` | **COTS/vendor** part (clean, reusable module mirroring `create_part.py`). Creates a `BE9_COTS` item with a user-supplied part number, and scrapes McMaster property data (log-only for now). |
-| `create_VENDOR_part.py` | Recorded-journal COTS flow driven by the **McMaster scraper**: prompt for a part number → scrape JSON + download CAD → derive attributes → prompt for part name → create the part. |
-| `create_VENDOR_part_dialog.dlx` | 5-field COTS dialog (Part Number, Part Name, Description, Manufacturer, Part Class). Used by `create_COTS_part.py`. Hand-authored; not yet round-tripped through Block UI Styler. |
-| `create_VENDOR_partno_dialog.dlx` | Single-field "Part Number" dialog (block id `partNo`) — step 1 of `create_VENDOR_part.py`. |
-| `create_VENDOR_partname_dialog.dlx` | Single-field "Part Name" dialog (block id `partName`) — step 4 of `create_VENDOR_part.py`, prefilled with the description. Sets `DB_PART_NAME`. |
-| `scraper/` | Vendored copy of the McMaster-Carr scraper (`br435t/McMaster-scraper`). See `scraper/VENDORED.md`. Run as a subprocess, not imported into NX. |
-| `nx_input.py` | Reusable UF `ask_string` text-prompt helper (legacy; no longer used but kept for reuse). |
-| `new_part.py` | The original recorded journal (File → New → Item) this work was reverse-engineered from. Reference only. **Generated from inside NX** via **Tools → Journal → Record**, not hand-written. |
-| `import_Parasolid.py` | Recorded journal (File → Import → Parasolid) that the `import_parasolid()` helper in `create_VENDOR_part.py` was derived from. Reference only. |
-| `journal_create_vendorpart.py` | Fresh **working** recording of the COTS create (creates `ID.A/Name`). The source of truth for the required attributes and the `SetAddMaster(False)` fix. Reference only. |
-| `.mcp.json` | Config for the `nxopen` MCP server. |
+| `NX-Scripts/Create-McMaster-Part/create_VENDOR_part.py` | **Main tool.** Scraper-driven COTS flow: prompt for a part number → scrape JSON + download CAD → derive attributes → prompt for part name → create the `BE9_COTS` part → import the CAD. |
+| `NX-Scripts/Create-McMaster-Part/create_VENDOR_partno_dialog.dlx` | Single-field "Part Number" dialog (block id `partNo`) — step 1. |
+| `NX-Scripts/Create-McMaster-Part/create_VENDOR_partname_dialog.dlx` | Single-field "Part Name" dialog (block id `partName`) — prefilled with the description; sets `DB_PART_NAME`. |
+| `NX-Scripts/Create-McMaster-Part/create_VENDOR_part_dialog.dlx` | Legacy 5-field COTS dialog. Not used by the current flow; kept for reference. |
+| `Tools/scraper/` | Vendored copy of the McMaster-Carr scraper (`br435t/McMaster-scraper`). See `Tools/scraper/VENDORED.md`. Run as a subprocess, not imported into NX. |
+| `example_journals/journal_create_vendor_part.py` | Fresh **working** recording of the COTS create (creates `ID.A/Name`). Source of truth for the required attributes and the `SetAddMaster(False)` fix. |
+| `example_journals/journal_import_Parasolid.py` | Recorded File → Import → Parasolid journal the `import_parasolid()` helper was derived from. |
+| `create_part.py` + `create_part_dialog.dlx` | Legacy **Design**-part flow (BE9_Design, auto-assigned number). The `.dlx` moved under `NX-Scripts/`, so this needs its path updated if revived. |
+| `new_part.py` | Original recorded File → New → Item journal this work was reverse-engineered from. Reference only. |
+| `nx_input.py` | Legacy UF `ask_string` text-prompt helper; no longer used. |
+| `.mcp.json` | Config for the `nxopen` MCP server (git-ignored). |
 
-## COTS / vendor parts (`create_COTS_part.py`)
+## COTS / vendor parts (`create_VENDOR_part.py`)
 
 Creates a `BE9_COTS` item. Differs from the Design flow in three ways:
 
@@ -43,11 +57,7 @@ Creates a `BE9_COTS` item. Differs from the Design flow in three ways:
 - **Attributes span two categories:** `DB_PART_NO`/`DB_PART_NAME`/`DB_PART_DESC`
   on `BE9_COTS`; `HE_Manufacturer`/`Part Class` on `BE9_COTSRevision`.
 
-Key functions: `create_part_cots(...)` (non-interactive creator),
-`prompt_cots_attributes(...)` (BlockStyler dialog → dict of the 5 fields),
-`scrape_mcmaster_part(...)` / `log_scraped_data(...)` (see below), and `main()`.
-
-### `create_VENDOR_part.py` — scraper-driven COTS flow
+### Flow (`main()`)
 
 This is the recorded journal wired to the scraper. `main()` does:
 
@@ -76,28 +86,21 @@ is live-tested; the dialogs + journal body still need a real NX run.
 
 ### McMaster scraper integration
 
-`create_COTS_part.py` shells out to the vendored `scraper/mcmaster_scraper.py`
+`create_VENDOR_part.py` shells out to the vendored `Tools/scraper/mcmaster_scraper.py`
 to fetch property data by part number. **It runs the scraper as a subprocess in
 an external Python interpreter**, because the scraper needs Selenium + a real
 Edge browser, which are not available in NX's embedded Python.
 
-- Interpreter selection: `python_exe` arg → `MCMASTER_SCRAPER_PYTHON` env var →
-  `python` on PATH. Point this at a venv that has selenium installed.
-- Setup (once):
-  ```powershell
-  python -m venv .venv
-  .\.venv\Scripts\pip install -r scraper\requirements.txt
-  $env:MCMASTER_SCRAPER_PYTHON = "C:\Code\Create-McMaster-Part\.venv\Scripts\python.exe"
-  python scraper\mcmaster_scraper.py login   # cache the McMaster session
-  ```
-- **Current behavior: fetch & log only.** `main()` scrapes the entered part
-  number and prints title/price/URL/specs to the Listing Window, but does *not*
-  yet populate attributes from the scrape. `scrape_mcmaster_part()` never
-  raises — failures return an `{"error": ...}` dict — so a scrape problem can't
-  block part creation.
-- **Not verified in a live NX session** (no selenium locally, and the scrape
-  needs Edge + a McMaster login). The journal-side wiring (subprocess, JSON
-  parsing, error paths, logging) is unit-tested.
+- Interpreter selection (`_scraper_python()`): `MCMASTER_SCRAPER_PYTHON` env var
+  → the repo-root `.venv` (found by walking up from the script) → `python` on
+  PATH. No env var needed if `.venv` exists — the script auto-detects it.
+- Setup (once): run `setup.bat` at the repo root (creates `.venv`, installs
+  `requirements.txt` behind the corporate proxy, and runs the
+  McMaster `login` to cache the session).
+- `fetch_mcmaster()` returns a dict with `data` / `json_file` / `cad_file` and
+  `error` / `cad_error`; it never raises. A hard scrape error aborts creation
+  (the description depends on it); a CAD-download error is non-fatal (the
+  Parasolid import is just skipped).
 
 ## How to run
 
@@ -148,7 +151,8 @@ Edge browser, which are not available in NX's embedded Python.
 8. The `.dlx` was hand-built from NX's own sample
    `C:\SPLM\NX\NX2506\MACH\auxiliary\sme\setLicense.dlx` to guarantee a valid schema.
 9. **`SetAddMaster(False)` is required for the COTS commit.** A fresh working
-   recording (`journal_create_vendorpart.py`, creates `ID.A/Name`) revealed the
+   recording (`example_journals/journal_create_vendor_part.py`, creates
+   `ID.A/Name`) revealed the
    real fix for `Commit()` failing with "The new filename is not a valid file
    specification": call
    `partOperationCreateBuilder.SetAddMaster(False)` before creating the COTS
