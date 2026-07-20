@@ -39,7 +39,6 @@ An NX script finds the repo root by walking up, so it locates `Tools/` and
 | `NX-Scripts/Create-McMaster-Part/create_VENDOR_part.py` | **Main tool.** Scraper-driven COTS flow: prompt for a part number → scrape JSON + download CAD → derive attributes → prompt for part name → create the `BE9_COTS` part → import the CAD. |
 | `NX-Scripts/Create-McMaster-Part/create_VENDOR_partno_dialog.dlx` | Single-field "Part Number" dialog (block id `partNo`) — step 1. |
 | `NX-Scripts/Create-McMaster-Part/create_VENDOR_partname_dialog.dlx` | Single-field "Part Name" dialog (block id `partName`) — prefilled with the description; sets `DB_PART_NAME`. |
-| `NX-Scripts/Create-McMaster-Part/create_VENDOR_part_dialog.dlx` | Legacy 5-field COTS dialog. Not used by the current flow; kept for reference. |
 | `Tools/scraper/` | Vendored copy of the McMaster-Carr scraper (`br435t/McMaster-scraper`). See `Tools/scraper/VENDORED.md`. Run as a subprocess, not imported into NX. |
 | `example_journals/journal_create_vendor_part.py` | Fresh **working** recording of the COTS create (creates `ID.A/Name`). Source of truth for the required attributes and the `SetAddMaster(False)` fix. |
 | `example_journals/journal_import_Parasolid.py` | Recorded File → Import → Parasolid journal the `import_parasolid()` helper was derived from. |
@@ -166,6 +165,7 @@ Edge browser, which are not available in NX's embedded Python.
   to map scraped fields onto attributes (e.g. title → `DB_PART_NAME`, secondary/
   specs → `DB_PART_DESC`, `HE_Manufacturer` → `McMaster-Carr`) and optionally
   write each spec as its own NX user attribute.
-- **COTS dialog `.dlx`** is hand-authored and not yet verified to load in NX.
-- If `Part Class` should be a fixed list (Class I/II/III), change the
-  `partClass` block in `create_VENDOR_part_dialog.dlx` to a Combo.
+- **COTS dialogs (`.dlx`)** are hand-authored and not round-tripped through NX's
+  Block UI Styler.
+- `Part Class` is fixed at `"Class III"`; make it a dialog field if it needs to
+  vary.
