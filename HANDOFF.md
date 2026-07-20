@@ -1,7 +1,8 @@
 # Handoff — NX Open "Create Part" automation
 
-Automates creating a new part in **NX 2506** running in **Teamcenter managed mode**,
-prompting the user for a name and description via a BlockStyler dialog.
+Automates creating a McMaster-Carr COTS part in **NX 2506** running in
+**Teamcenter managed mode**: enter a part number, scrape its data + CAD, and
+create the `BE9_COTS` item with the imported geometry.
 
 ## Environment
 
@@ -9,7 +10,7 @@ prompting the user for a name and description via a BlockStyler dialog.
 - Runs in **Teamcenter managed mode** (not native/filesystem mode). This changes
   everything about how parts are created (see gotchas).
 - Custom Helion item types: `BE9_Design, BE9_Electrical, BE9_COTS, BE9_Tooling`
-  (the part is created as `BE9_Design`).
+  (the part is created as `BE9_COTS`).
 - Default template: `@DB/model-plain-1-inch-template/A` (units = inches).
 - An `nxopen` MCP server (see `.mcp.json`) indexes the NX 2506 Python API and
   stubs — use it to look up signatures. **Note:** it does **not** index
@@ -25,8 +26,8 @@ Organized by where the code runs:
 - **`example_journals/`** — journals **recorded in NX** (Tools → Journal →
   Record), kept as reference for reverse-engineering NX Open calls. Not run
   directly.
-- **Repo root** — `setup.bat`, `.venv/` (git-ignored), the docs, and legacy
-  scripts (`create_part.py`, `new_part.py`, `nx_input.py`).
+- **Repo root** — `setup.bat`, `requirements.txt`, `.venv/` (git-ignored), and
+  the docs.
 
 An NX script finds the repo root by walking up, so it locates `Tools/` and
 `.venv/` no matter how deep it sits under `NX-Scripts/`.
@@ -42,9 +43,6 @@ An NX script finds the repo root by walking up, so it locates `Tools/` and
 | `Tools/scraper/` | Vendored copy of the McMaster-Carr scraper (`br435t/McMaster-scraper`). See `Tools/scraper/VENDORED.md`. Run as a subprocess, not imported into NX. |
 | `example_journals/journal_create_vendor_part.py` | Fresh **working** recording of the COTS create (creates `ID.A/Name`). Source of truth for the required attributes and the `SetAddMaster(False)` fix. |
 | `example_journals/journal_import_Parasolid.py` | Recorded File → Import → Parasolid journal the `import_parasolid()` helper was derived from. |
-| `create_part.py` + `create_part_dialog.dlx` | Legacy **Design**-part flow (BE9_Design, auto-assigned number). The `.dlx` moved under `NX-Scripts/`, so this needs its path updated if revived. |
-| `new_part.py` | Original recorded File → New → Item journal this work was reverse-engineered from. Reference only. |
-| `nx_input.py` | Legacy UF `ask_string` text-prompt helper; no longer used. |
 | `.mcp.json` | Config for the `nxopen` MCP server (git-ignored). |
 
 ## COTS / vendor parts (`create_VENDOR_part.py`)
@@ -104,26 +102,14 @@ Edge browser, which are not available in NX's embedded Python.
 
 ## How to run
 
-1. Open NX 2506 with a Teamcenter session active.
-2. **File → Execute → NX Open…** → select `create_part.py`.
-3. A "Create Part" dialog appears with **Name** and **Description** fields.
-4. Fill them in, click **OK**. The part is created as a `BE9_Design` item with an
-   auto-assigned part number; results are logged to the Listing Window
-   (e.g. `Created part: 1135393-001.01/test name`).
-
-## Key functions (`create_part.py`)
-
-- `create_part_teamcenter(part_name, description, part_class="Class III", ...)`
-  — the managed-mode creator. Sets up the template, the
-  `PDM.PartOperationCreateBuilder`, auto-numbering, and attributes, then commits.
-  Non-interactive, so it's reusable from other scripts.
-- `prompt_name_and_description(dlx_path=...)` — launches the BlockStyler dialog and
-  returns `(name, description)`; `(None, None)` on cancel.
-- `list_templates()` — returns `(name, units, is_blank)` for all registered
-  templates. Use to discover valid `@DB/...` template refs.
-- `create_part(new_file_name, ...)` — native/filesystem-mode creator. **Does not
-  work in this Teamcenter session** (template doesn't exist); kept for non-managed use.
-- `main()` — prompts, then calls `create_part_teamcenter`.
+1. One-time setup: run `setup.bat` at the repo root (creates `.venv`, installs
+   `requirements.txt`, and caches the McMaster login).
+2. Open NX 2506 with a Teamcenter session active.
+3. **File → Execute → NX Open…** → select
+   `NX-Scripts/Create-McMaster-Part/create_VENDOR_part.py`.
+4. Enter the McMaster part number. The tool scrapes the data, downloads the CAD,
+   prompts for the part name, creates the `BE9_COTS` part, and imports the CAD;
+   progress is logged to the Listing Window.
 
 ## Gotchas discovered (hard-won — don't re-learn these)
 

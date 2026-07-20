@@ -5,12 +5,8 @@ a McMaster-Carr part number and it scrapes the product data, downloads the CAD,
 creates a `BE9_COTS` part in Teamcenter, and imports the geometry — prompting
 through BlockStyler dialogs along the way.
 
-There are two entry points:
-
-- **`create_VENDOR_part.py`** — the McMaster/COTS flow (part number → scrape →
-  create → import). This is the main tool.
-- **`create_part.py`** — the original Design-part flow (prompt for Name +
-  Description, auto-assigned number). Kept for reference/reuse.
+The main tool is **`NX-Scripts/Create-McMaster-Part/create_VENDOR_part.py`** —
+the McMaster/COTS flow (part number → scrape → create → import).
 
 ## Prerequisites
 
@@ -64,9 +60,8 @@ The repo is organized by where code runs:
 - **`example_journals/`** — journals **recorded in NX** (Tools → Journal →
   Record), kept as reference examples for reverse-engineering NX Open calls.
   Not executed directly.
-- **Repo root** — `setup.bat` (one-click setup), `.venv/` (Python env for the
-  Tools; git-ignored), `README.md`, `HANDOFF.md`, and a few legacy scripts
-  (`create_part.py`, `new_part.py`, `nx_input.py`).
+- **Repo root** — `setup.bat` (one-click setup), `requirements.txt`, `.venv/`
+  (Python env for the Tools; git-ignored), `README.md`, and `HANDOFF.md`.
 
 | Path | Purpose |
 |------|---------|
@@ -84,8 +79,7 @@ An NX script locates the repo root by walking up the folder tree, so it finds
 
 ## Notes
 
-- Targets **Teamcenter managed mode**; the native `create_part` helper won't
-  work in a managed session.
+- Targets **Teamcenter managed mode** (not native/filesystem mode).
 - The scraper needs a McMaster login (cached in a dedicated Edge profile). If the
   session expires, the tool opens a sign-in window automatically.
 - See `HANDOFF.md` for the full list of NX Open / Teamcenter gotchas.
